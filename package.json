@@ -1,0 +1,35 @@
+{
+  "name": "karalyr",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Open-source karaoke lyrics database with word-level timing, community corrections, and an LRCLIB-compatible API.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "seed": "tsx scripts/seed.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.15",
+    "drizzle-orm": "^0.44.2",
+    "next": "^15.4.5",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "drizzle-kit": "^0.31.4",
+    "tailwindcss": "^4.1.11",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

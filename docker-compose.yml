@@ -1,0 +1,23 @@
+services:
+  karalyr:
+    image: node:24-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+      - karalyr_node_modules:/app/node_modules
+      - karalyr_data:/app/data
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: file:./data/karalyr.db
+      ADMIN_TOKEN: dev-admin-token
+      POW_DIFFICULTY: "19"
+      POW_SECRET: dev-pow-secret
+      FINGERPRINT_SALT: dev-fingerprint-salt
+      LRCLIB_BASE_URL: https://lrclib.net
+    command: >
+      sh -c "npm install && npm run db:migrate && npm run seed && npm run dev"
+
+volumes:
+  karalyr_node_modules:
+  karalyr_data:
