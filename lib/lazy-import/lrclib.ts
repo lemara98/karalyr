@@ -27,21 +27,10 @@ function toPayload(res: LrclibResponse): LyricsPayload | null {
       return null;
     }
   }
-  if (res.plainLyrics) {
-    // Untimed lyrics: keep line order with zeroed, non-overlapping stubs so
-    // the payload validates; has_word_timing false and all starts 0-based.
-    const lines = res.plainLyrics.split(/\r?\n/);
-    return {
-      format_version: 1,
-      lines: lines.map((text, i) => ({
-        start_ms: i * 1000,
-        end_ms: i * 1000 + 1000,
-        singer: null,
-        text: text.trim(),
-      })),
-      meta: { language: null, has_word_timing: false, countdown_lines: [] },
-    };
-  }
+  // Plain-only lyrics are NOT imported: fabricating line timestamps would
+  // serve garbage syncedLyrics to LRCLIB-compatible clients and, worse,
+  // give the listen-along aligner fake line windows to anchor against.
+  // Timing for these tracks has to come from a human (tap editor) first.
   return null;
 }
 
