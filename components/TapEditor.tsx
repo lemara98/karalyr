@@ -84,40 +84,49 @@ export function TapEditor({
             onChange={(e) => setText(e.target.value)}
             rows={10}
             placeholder={"Paste plain lyrics, one line per row…"}
-            className="w-full rounded border border-zinc-300 bg-white p-3 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            className="field !rounded-xl text-sm"
+            style={{ fontFamily: "var(--font-mono)" }}
           />
           <button
             onClick={beginTapping}
             disabled={lines.length === 0 || durationSeconds <= 0}
-            className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900"
+            className="btn btn-primary"
           >
             Start tap timing ({lines.length} lines)
           </button>
           {durationSeconds <= 0 && (
-            <p className="text-xs text-amber-600">Set the track duration above first.</p>
+            <p className="text-xs text-[color:var(--klr-hi)]">
+              Set the track duration above first.
+            </p>
           )}
         </>
       )}
       {tapping && (
         <>
           <TransportBar {...clock} durationMs={durationMs} />
-          <p className="text-sm text-zinc-500">
-            Press <kbd className="rounded border px-1">Space</kbd> when each
-            line starts. {cursor}/{lines.length} stamped.
+          <p className="text-sm text-[color:var(--color-text-muted)]">
+            Press{" "}
+            <kbd className="rounded-md border border-white/15 bg-white/5 px-1.5 py-0.5 text-xs">
+              Space
+            </kbd>{" "}
+            when each line starts. {cursor}/{lines.length} stamped.
           </p>
-          <ol className="max-h-72 space-y-0.5 overflow-y-auto rounded border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+          <ol className="klr-card max-h-72 space-y-0.5 overflow-y-auto p-4 text-sm">
             {lines.map((line, i) => (
               <li
                 key={i}
                 className={
                   i === cursor
-                    ? "font-semibold"
+                    ? "font-semibold text-[color:var(--klr-hi)]"
                     : i < cursor
-                      ? "text-zinc-400"
-                      : "text-zinc-600 dark:text-zinc-400"
+                      ? "text-[color:var(--color-text-dim)]"
+                      : "text-[color:var(--color-text-muted)]"
                 }
               >
-                <span className="mr-2 inline-block w-16 font-mono text-xs text-zinc-500">
+                <span
+                  className="mr-2 inline-block w-16 text-xs text-[color:var(--color-text-dim)]"
+                  style={{ fontFamily: "var(--font-mono)" }}
+                >
                   {stamps[i] !== null ? `${(stamps[i]! / 1000).toFixed(2)}s` : "--"}
                 </span>
                 {line}
@@ -131,7 +140,7 @@ export function TapEditor({
               setCursor(0);
               onPayloadReady(null);
             }}
-            className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700"
+            className="btn btn-secondary btn-sm"
           >
             Reset
           </button>

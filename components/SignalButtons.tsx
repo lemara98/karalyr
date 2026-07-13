@@ -31,28 +31,29 @@ export function SignalButtons({ revisionId }: { revisionId: number }) {
     router.refresh();
   }
 
-  const btn =
-    "rounded border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900";
-
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <div className="flex flex-wrap items-center gap-2">
-        <button className={btn} onClick={() => send("explicit_up")} title="Timing is good">
+        <button className="btn btn-secondary btn-sm" onClick={() => send("explicit_up")} title="Timing is good">
           👍 Good timing
         </button>
-        <button className={btn} onClick={() => send("explicit_down")} title="Timing is off">
+        <button className="btn btn-secondary btn-sm" onClick={() => send("explicit_down")} title="Timing is off">
           👎 Bad timing
         </button>
-        <button className={btn} onClick={() => send("clean_playthrough")} title="Sang through with no issues">
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={() => send("clean_playthrough")}
+          title="Sang through with no issues"
+        >
           ✅ Clean playthrough
         </button>
-        <button className={btn} onClick={() => setOffsetOpen(!offsetOpen)}>
+        <button className="btn btn-ghost btn-sm" onClick={() => setOffsetOpen(!offsetOpen)}>
           ⏱ Report timing offset
         </button>
       </div>
       {offsetOpen && (
         <form
-          className="flex items-center gap-2 text-sm"
+          className="flex flex-wrap items-center gap-2 text-sm"
           onSubmit={(e) => {
             e.preventDefault();
             const value = parseInt(offset, 10);
@@ -65,17 +66,18 @@ export function SignalButtons({ revisionId }: { revisionId: number }) {
             value={offset}
             onChange={(e) => setOffset(e.target.value)}
             placeholder="+250"
-            className="w-28 rounded border border-zinc-300 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900"
+            className="field !w-28"
+            style={{ fontFamily: "var(--font-mono)" }}
           />
-          <span className="text-zinc-500">
+          <span className="text-[color:var(--color-text-dim)]">
             ms (positive = lyrics should appear later)
           </span>
-          <button type="submit" className={btn}>
+          <button type="submit" className="btn btn-secondary btn-sm">
             Send
           </button>
         </form>
       )}
-      {message && <p className="text-sm text-zinc-500">{message}</p>}
+      {message && <p className="text-sm text-[color:var(--color-text-muted)]">{message}</p>}
     </div>
   );
 }

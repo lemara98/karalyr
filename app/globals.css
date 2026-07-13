@@ -1,15 +1,293 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Karalyr brand tokens — from the Karalyr design doc (Karafilt family).
+   Accent pairing "Violet → Pink": klr-a #b46cff, klr-b #ff6b9d, hi #ff8fb3.
+--------------------------------------------------------------------------- */
 :root {
-  color-scheme: light dark;
+  --color-bg: #0b0e1a;
+  --color-text: #f1efff;
+  --color-text-muted: #9095b3;
+  --color-text-dim: #6b7294;
+
+  --klr-a: #b46cff;
+  --klr-b: #ff6b9d;
+  --klr-hi: #ff8fb3;
+
+  --font-sans: var(--font-space-grotesk), "Segoe UI", -apple-system,
+    BlinkMacSystemFont, Roboto, sans-serif;
+  --font-display: var(--font-space-grotesk), "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+
+  color-scheme: dark;
+  accent-color: var(--klr-b);
 }
 
 body {
-  @apply bg-zinc-50 text-zinc-900 antialiased;
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    @apply bg-zinc-950 text-zinc-100;
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ------------------------------- utilities ------------------------------ */
+
+/* Card idiom: rounded-2xl border-white/10 bg-white/[0.02] */
+.klr-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.klr-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-dim);
+}
+
+.brand-gradient {
+  background: linear-gradient(135deg, var(--klr-a), var(--klr-b));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Pills / buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease,
+    border-color 0.15s ease;
+  white-space: nowrap;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-primary {
+  color: #fff;
+  background: linear-gradient(135deg, var(--klr-a), var(--klr-b));
+  box-shadow: 0 8px 24px -12px color-mix(in srgb, var(--klr-b) 60%, transparent);
+}
+.btn-primary:hover:not(:disabled) {
+  transform: scale(1.02);
+}
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.btn-secondary {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+.btn-ghost:hover:not(:disabled) {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+.btn-sm {
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+/* Form fields */
+.field {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.field::placeholder {
+  color: var(--color-text-dim);
+}
+.field:focus {
+  border-color: color-mix(in srgb, var(--klr-b) 55%, transparent);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Range slider (playback simulator) */
+input[type="range"] {
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: none;
+  background: var(--klr-b);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--klr-b) 60%, transparent);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: none;
+  background: var(--klr-b);
+  cursor: pointer;
+}
+
+/* ------------------------------ animations ------------------------------ */
+
+@keyframes logoPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.7;
+  }
+}
+.logo-dot {
+  display: inline-block;
+  color: var(--klr-b);
+  animation: logoPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+.floaty {
+  animation: floaty 4.5s ease-in-out infinite;
+}
+
+/* The K mark: lyric lines light up top-to-bottom like a playhead. */
+@keyframes klrKSweep {
+  0%,
+  100% {
+    opacity: 0.42;
+  }
+  12% {
+    opacity: 1;
+  }
+  44% {
+    opacity: 0.42;
+  }
+}
+.klr-k-row {
+  animation: klrKSweep 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-dot,
+  .floaty,
+  .klr-k-row {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Karaoke lyrics (player + hero demo) — ported from the Karafilt family
+   design system (.kf-lyrics), highlight remapped to the Karalyr pink.
+--------------------------------------------------------------------------- */
+.kf-lyrics {
+  --lyrics-highlight: var(--klr-hi);
+}
+.kf-lyrics .line {
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 8px 12px;
+  color: #8b90b0;
+  text-align: center;
+  opacity: 0.5;
+  border: 2px solid transparent;
+  transition: opacity 0.35s, color 0.35s, background 0.35s, border-color 0.35s,
+    box-shadow 0.35s;
+  border-radius: 8px;
+  margin: 3px 8px;
+  word-break: break-word;
+}
+.kf-lyrics .line.active + .line,
+.kf-lyrics .line:has(+ .active) {
+  opacity: 0.8;
+  color: #c0c4e0;
+}
+.kf-lyrics .line.active + .line + .line,
+.kf-lyrics .line:has(+ .line + .active) {
+  opacity: 0.65;
+  color: #a0a4c0;
+}
+.kf-lyrics .line.active {
+  opacity: 1 !important;
+  color: #ffffff !important;
+  background: linear-gradient(
+    135deg,
+    rgba(96, 165, 250, 0.45),
+    rgba(192, 132, 252, 0.45),
+    rgba(255, 107, 157, 0.35)
+  );
+  border: 2px solid color-mix(in srgb, var(--lyrics-highlight) 70%, transparent);
+  box-shadow: 0 0 32px color-mix(in srgb, var(--lyrics-highlight) 40%, transparent),
+    0 0 60px rgba(96, 165, 250, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--lyrics-highlight) 50%, transparent);
+}
+.kf-lyrics .line.past {
+  opacity: 0.35;
+}
+.kf-lyrics .word {
+  display: inline-block;
+  transition: color 0.18s ease-out, text-shadow 0.18s ease-out,
+    transform 0.18s ease-out;
+}
+.kf-lyrics .line.active .word.upcoming {
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: none;
+}
+.kf-lyrics .line.active .word.sung {
+  color: #ffffff;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--lyrics-highlight) 85%, transparent),
+    0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.kf-lyrics .line.active .word.singing {
+  color: var(--lyrics-highlight);
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.95),
+    0 0 30px color-mix(in srgb, var(--lyrics-highlight) 75%, transparent),
+    0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.kf-lyrics .line:not(.active) .word {
+  color: inherit;
+  text-shadow: inherit;
+  transform: none;
 }

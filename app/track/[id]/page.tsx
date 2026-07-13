@@ -38,18 +38,25 @@ export default async function TrackPage({
   const payload = best ? validatePayload(JSON.parse(best.payload)) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 px-6 py-10">
       <div>
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold">{track.trackName}</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1
+            className="text-3xl font-bold tracking-[-0.02em]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {track.trackName}
+          </h1>
           <TierBadge tier={best?.tier ?? null} />
         </div>
-        <p className="text-zinc-500">
+        <p className="mt-1.5 text-[color:var(--color-text-muted)]">
           {track.artistName}
           {track.albumName && <> · {track.albumName}</>} ·{" "}
-          {formatDuration(track.durationSeconds)}
+          <span style={{ fontFamily: "var(--font-mono)" }}>
+            {formatDuration(track.durationSeconds)}
+          </span>
           {best && (
-            <span className="ml-2 text-xs">
+            <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">
               revision #{best.id} ({best.source})
             </span>
           )}
@@ -68,7 +75,7 @@ export default async function TrackPage({
           </div>
         </>
       ) : (
-        <p className="text-zinc-500">No lyrics yet for this track.</p>
+        <p className="text-[color:var(--color-text-muted)]">No lyrics yet for this track.</p>
       )}
 
       <RevisionList trackId={track.id} />

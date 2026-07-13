@@ -98,34 +98,28 @@ export function Contribute() {
     }
   }
 
-  const input =
-    "w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";
   const tab = (active: boolean) =>
-    `rounded-t px-4 py-2 text-sm font-medium ${
-      active
-        ? "border border-b-0 border-zinc-300 dark:border-zinc-700"
-        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-    }`;
+    `btn btn-sm ${active ? "btn-secondary" : "btn-ghost"}`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <label className="col-span-1 text-sm">
+        <label className="text-sm text-[color:var(--color-text-muted)]">
           Artist *
-          <input className={input} value={artist} onChange={(e) => setArtist(e.target.value)} />
+          <input className="field mt-1.5" value={artist} onChange={(e) => setArtist(e.target.value)} />
         </label>
-        <label className="col-span-1 text-sm">
+        <label className="text-sm text-[color:var(--color-text-muted)]">
           Title *
-          <input className={input} value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input className="field mt-1.5" value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
-        <label className="col-span-1 text-sm">
+        <label className="text-sm text-[color:var(--color-text-muted)]">
           Album
-          <input className={input} value={album} onChange={(e) => setAlbum(e.target.value)} />
+          <input className="field mt-1.5" value={album} onChange={(e) => setAlbum(e.target.value)} />
         </label>
-        <label className="col-span-1 text-sm">
+        <label className="text-sm text-[color:var(--color-text-muted)]">
           Duration (s) *
           <input
-            className={input}
+            className="field mt-1.5"
             type="number"
             min={1}
             value={duration}
@@ -135,7 +129,7 @@ export function Contribute() {
       </div>
 
       <div>
-        <div className="flex gap-1">
+        <div className="mb-3 flex gap-2">
           <button className={tab(mode === "paste")} onClick={() => setMode("paste")}>
             Paste lyrics file
           </button>
@@ -143,7 +137,7 @@ export function Contribute() {
             Tap timing editor
           </button>
         </div>
-        <div className="rounded-b rounded-tr border border-zinc-300 p-4 dark:border-zinc-700">
+        <div className="klr-card p-5">
           {mode === "paste" ? (
             <div className="space-y-3">
               <textarea
@@ -151,15 +145,16 @@ export function Contribute() {
                 onChange={(e) => setRaw(e.target.value)}
                 rows={12}
                 placeholder={"[00:12.04]First line…\nor Enhanced LRC / UltraStar .txt"}
-                className="w-full rounded border border-zinc-300 bg-white p-3 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                className="field !rounded-xl text-sm"
+                style={{ fontFamily: "var(--font-mono)" }}
               />
-              <div className="flex items-center gap-3 text-sm">
-                <label>
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <label className="text-[color:var(--color-text-muted)]">
                   Format{" "}
                   <select
                     value={format}
                     onChange={(e) => setFormat(e.target.value as ImportFormat | "auto")}
-                    className="rounded border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+                    className="field !w-auto !py-1.5"
                   >
                     <option value="auto">auto-detect</option>
                     <option value="lrc">Plain LRC</option>
@@ -168,7 +163,13 @@ export function Contribute() {
                   </select>
                 </label>
                 {preview && (
-                  <span className={preview.error ? "text-red-600" : "text-zinc-500"}>
+                  <span
+                    className={
+                      preview.error
+                        ? "text-red-400"
+                        : "text-[color:var(--color-text-dim)]"
+                    }
+                  >
                     {preview.error
                       ? `Parse error: ${preview.error}`
                       : `Detected ${preview.fmt}: ${preview.lines} lines, ${preview.wordTiming ? "word-level" : "line-level"} timing`}
@@ -182,36 +183,36 @@ export function Contribute() {
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         <button
           onClick={publish}
           disabled={!ready || state.phase === "solving" || state.phase === "publishing"}
-          className="rounded bg-zinc-900 px-5 py-2.5 font-medium text-white disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900"
+          className="btn btn-primary"
         >
-          Publish
+          Publish to the library
         </button>
         {state.phase !== "idle" && (
           <p
             className={`text-sm ${
               state.phase === "error"
-                ? "text-red-600"
+                ? "text-red-400"
                 : state.phase === "done"
-                  ? "text-emerald-600"
-                  : "text-zinc-500"
+                  ? "text-[color:var(--klr-hi)]"
+                  : "text-[color:var(--color-text-muted)]"
             }`}
           >
             {state.detail}
             {state.phase === "done" && state.trackId && (
               <>
                 {" "}
-                <Link href={`/track/${state.trackId}`} className="underline">
+                <Link href={`/track/${state.trackId}`} className="text-[color:var(--klr-b)] hover:text-[color:var(--klr-hi)]">
                   View track →
                 </Link>
               </>
             )}
           </p>
         )}
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-[color:var(--color-text-dim)]">
           Publishing runs a ~1–2 second proof-of-work in your browser to deter
           spam. Submissions are anonymous; only a salted hash of your
           IP/browser is stored.

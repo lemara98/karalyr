@@ -21,15 +21,16 @@ export function ExportButtons({
   payload: LyricsPayload;
   baseName: string;
 }) {
-  const btn =
-    "rounded border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900";
   return (
     <div className="flex gap-2">
-      <button className={btn} onClick={() => download(`${baseName}.lrc`, serializeLrc(payload))}>
+      <button
+        className="btn btn-secondary btn-sm"
+        onClick={() => download(`${baseName}.lrc`, serializeLrc(payload))}
+      >
         Export LRC
       </button>
       <button
-        className={btn}
+        className="btn btn-secondary btn-sm"
         onClick={() => download(`${baseName}.elrc`, serializeEnhancedLrc(payload))}
         disabled={!payload.meta.has_word_timing}
         title={payload.meta.has_word_timing ? undefined : "No word timing in this revision"}

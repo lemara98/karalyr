@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { LyricsPayload } from "@/lib/formats/types";
 
 function fmt(ms: number): string {
@@ -50,26 +50,39 @@ export function TransportBar({
   durationMs,
 }: ReturnType<typeof useSimulatorClock> & { durationMs: number }) {
   return (
-    <div className="flex items-center gap-3">
-      <button
-        onClick={() => setPlaying(!playing)}
-        className="w-20 rounded bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-      >
+    <div className="flex items-center gap-3.5">
+      <button onClick={() => setPlaying(!playing)} className="btn btn-primary btn-sm w-20">
         {playing ? "Pause" : "Play"}
       </button>
-      <span className="w-12 text-right font-mono text-sm text-zinc-500">{fmt(timeMs)}</span>
+      <span
+        className="w-12 text-right text-[13px] text-[color:var(--color-text-dim)]"
+        style={{ fontFamily: "var(--font-mono)" }}
+      >
+        {fmt(timeMs)}
+      </span>
       <input
         type="range"
         min={0}
         max={durationMs}
         value={timeMs}
         onChange={(e) => seek(Number(e.target.value))}
-        className="flex-1"
+        className="min-w-0 flex-1"
       />
-      <span className="w-12 font-mono text-sm text-zinc-500">{fmt(durationMs)}</span>
+      <span
+        className="w-12 text-[13px] text-[color:var(--color-text-dim)]"
+        style={{ fontFamily: "var(--font-mono)" }}
+      >
+        {fmt(durationMs)}
+      </span>
     </div>
   );
 }
+
+const SINGER_STYLES: Record<string, string> = {
+  P1: "border-[color:color-mix(in_srgb,var(--klr-a)_45%,transparent)] text-[color:var(--klr-a)]",
+  P2: "border-[color:color-mix(in_srgb,var(--klr-b)_45%,transparent)] text-[color:var(--klr-b)]",
+  BOTH: "border-white/25 text-[color:var(--color-text-muted)]",
+};
 
 export function LyricsPlayer({
   payload,
@@ -96,7 +109,7 @@ export function LyricsPlayer({
   return (
     <div className="space-y-4">
       <TransportBar {...clock} durationMs={durationMs} />
-      <div className="max-h-96 space-y-1 overflow-y-auto rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="klr-card kf-lyrics max-h-96 overflow-y-auto py-4">
         {payload.lines.map((line, i) => {
           const active = i === activeIndex;
           const past = timeMs >= line.end_ms && !active;
@@ -105,44 +118,44 @@ export function LyricsPlayer({
               key={i}
               ref={active ? activeRef : undefined}
               onClick={() => clock.seek(line.start_ms)}
-              className={`cursor-pointer rounded px-2 py-1 transition-colors ${
-                active
-                  ? "bg-zinc-100 font-semibold dark:bg-zinc-900"
-                  : past
-                    ? "text-zinc-400 dark:text-zinc-600"
-                    : "text-zinc-700 dark:text-zinc-300"
-              }`}
+              className={`line cursor-pointer ${active ? "active" : ""} ${past ? "past" : ""}`}
             >
               {line.singer && (
-                <span className="mr-2 rounded bg-violet-100 px-1 text-xs text-violet-700 dark:bg-violet-900 dark:text-violet-300">
+                <span
+                  className={`mr-2 inline-block rounded-full border px-2 py-px align-middle text-[10px] tracking-wide ${SINGER_STYLES[line.singer]}`}
+                  style={{ fontFamily: "var(--font-mono)" }}
+                >
                   {line.singer}
                 </span>
               )}
               {line.words && line.words.length > 0
-                ? line.words.map((w, j) => (
-                    <span
-                      key={j}
-                      className={
-                        active && timeMs >= w.start_ms
-                          ? timeMs < w.end_ms
-                            ? "rounded bg-amber-200 text-zinc-900 dark:bg-amber-500"
-                            : "text-amber-600 dark:text-amber-400"
-                          : undefined
-                      }
-                    >
-                      {w.text}
-                      {j < line.words!.length - 1 ? " " : ""}
-                    </span>
-                  ))
-                : line.text || <span className="text-zinc-400">♪</span>}
+                ? line.words.map((w, j) => {
+                    const state = !active
+                      ? ""
+                      : timeMs >= w.end_ms
+                        ? "sung"
+                        : timeMs >= w.start_ms
+                          ? "singing"
+                          : "upcoming";
+                    // The separating space lives OUTSIDE the span: the
+                    // .word spans are inline-block, which trims trailing
+                    // whitespace inside them.
+                    return (
+                      <Fragment key={j}>
+                        <span className={`word ${state}`}>{w.text}</span>
+                        {j < line.words!.length - 1 ? " " : ""}
+                      </Fragment>
+                    );
+                  })
+                : line.text || <span className="opacity-50">♪</span>}
             </p>
           );
         })}
       </div>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-[color:var(--color-text-dim)]">
         Playback simulator — a plain clock, no audio. Click a line to jump.
         {payload.meta.has_word_timing
-          ? " The current word is highlighted karaoke-style."
+          ? " The current word lights up karaoke-style."
           : " This revision has line-level timing only."}
       </p>
     </div>

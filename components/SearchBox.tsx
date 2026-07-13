@@ -55,18 +55,19 @@ export function SearchBox() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search by artist or title…"
-        autoFocus
-        className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-lg outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+        className="field !rounded-full !px-5 !py-3.5 !text-base"
       />
-      {loading && <p className="mt-4 text-sm text-zinc-500">Searching…</p>}
+      {loading && (
+        <p className="mt-4 text-sm text-[color:var(--color-text-dim)]">Searching…</p>
+      )}
       {results !== null && !loading && (
-        <ul className="mt-4 divide-y divide-zinc-200 dark:divide-zinc-800">
+        <ul className="mt-4 divide-y divide-white/5">
           {results.length === 0 && (
-            <li className="py-4 text-sm text-zinc-500">
-              No matches. Karaoke clients trigger automatic imports from
-              LRCLIB on lookup, or you can{" "}
-              <Link href="/contribute" className="underline">
-                contribute lyrics
+            <li className="py-4 text-sm text-[color:var(--color-text-muted)]">
+              No matches. Karaoke clients trigger automatic imports from LRCLIB
+              on lookup, or you can{" "}
+              <Link href="/contribute" className="text-[color:var(--klr-b)] hover:text-[color:var(--klr-hi)]">
+                sync it yourself
               </Link>
               .
             </li>
@@ -75,18 +76,22 @@ export function SearchBox() {
             <li key={r.id}>
               <Link
                 href={`/track/${r.id}`}
-                className="flex items-center justify-between gap-3 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-900 px-2 -mx-2 rounded"
+                className="-mx-3 flex items-center justify-between gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-white/[0.04]"
               >
-                <span>
+                <span className="min-w-0 truncate">
                   <span className="font-medium">{r.artistName}</span>
-                  <span className="text-zinc-500"> — </span>
+                  <span className="text-[color:var(--color-text-dim)]"> — </span>
                   {r.trackName}
                   {r.albumName && (
-                    <span className="ml-2 text-xs text-zinc-500">{r.albumName}</span>
+                    <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">
+                      {r.albumName}
+                    </span>
                   )}
                 </span>
-                <span className="flex items-center gap-2 text-sm text-zinc-500">
-                  {formatDuration(r.duration)}
+                <span className="flex flex-none items-center gap-2.5 text-sm text-[color:var(--color-text-dim)]">
+                  <span style={{ fontFamily: "var(--font-mono)" }}>
+                    {formatDuration(r.duration)}
+                  </span>
                   <TierBadge tier={r.karalyr.tier} />
                 </span>
               </Link>
