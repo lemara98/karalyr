@@ -15,6 +15,13 @@
       "when": 1783856395608,
       "tag": "0001_fts5",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783946843378,
+      "tag": "0002_line_observations",
+      "breakpoints": true
     }
   ]
 }

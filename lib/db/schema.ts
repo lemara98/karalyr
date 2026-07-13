@@ -92,6 +92,32 @@ export const signals = sqliteTable(
   (t) => [index("signals_revision_type_idx").on(t.revisionId, t.type)]
 );
 
+// Per-line word-timing observations from listen-along clients (the Karafilt
+// extension aligns lines while users play songs and submits fragments here).
+// Aggregated into auto_aligned revisions by lib/stitch.ts once coverage is
+// good enough — see /api/observe.
+export const lineObservations = sqliteTable(
+  "line_observations",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    trackId: integer("track_id")
+      .notNull()
+      .references(() => tracks.id),
+    // Anchor: the line's start time in the base line-level revision.
+    lineStartMs: integer("line_start_ms").notNull(),
+    lineText: text("line_text").notNull(),
+    // JSON array of {text, start_ms, end_ms}
+    wordsJson: text("words_json").notNull(),
+    confidence: real("confidence").notNull(),
+    fingerprint: text("fingerprint").notNull(),
+    createdAt: integer("created_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (t) => [index("line_observations_track_idx").on(t.trackId, t.lineStartMs)]
+);
+
 export type Track = typeof tracks.$inferSelect;
 export type Revision = typeof revisions.$inferSelect;
 export type Signal = typeof signals.$inferSelect;
+export type LineObservation = typeof lineObservations.$inferSelect;

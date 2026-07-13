@@ -132,6 +132,27 @@ export default function DocsPage() {
   -d '{ "revision_id": 2, "type": "explicit_up" }'`}</Code>
       </Endpoint>
 
+      <Endpoint method="POST" path="/api/observe">
+        <p>
+          Listen-along alignment: karaoke clients (the Karafilt extension)
+          submit per-line word-timing observations measured during normal
+          playback. Body: track metadata + <code>line_start_ms</code>,{" "}
+          <code>line_text</code>, <code>words</code> and a{" "}
+          <code>confidence</code> (0–1). Once enough lines of a track are
+          covered, observations are median-merged and published automatically
+          as an <code>auto_aligned</code> revision. Unknown tracks return 202
+          and trigger a LRCLIB import.
+        </p>
+        <Code>{`curl -X POST "${BASE}/api/observe" -H "Content-Type: application/json" -d '{
+  "artist_name": "Artist", "track_name": "Song", "duration": 195,
+  "line_start_ms": 4000, "line_text": "First line here",
+  "words": [ { "text": "First", "start_ms": 4000, "end_ms": 4400 },
+             { "text": "line", "start_ms": 4400, "end_ms": 4800 },
+             { "text": "here", "start_ms": 4800, "end_ms": 5400 } ],
+  "confidence": 0.7
+}'`}</Code>
+      </Endpoint>
+
       <Endpoint method="GET" path="/api/track/:id/revisions">
         <p>Full revision history for a track (public transparency).</p>
         <Code>{`curl "${BASE}/api/track/2/revisions"`}</Code>
