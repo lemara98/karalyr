@@ -117,7 +117,26 @@ export const lineObservations = sqliteTable(
   (t) => [index("line_observations_track_idx").on(t.trackId, t.lineStartMs)]
 );
 
+// External video → track mapping ("yt:<videoId>" keys, see lib/video-key.ts).
+// Lets clients resolve lyrics by the video they are literally watching — an
+// exact lookup immune to title parsing. One video points at one track; a
+// track may have many videos (official video, audio upload, re-uploads).
+export const trackVideos = sqliteTable(
+  "track_videos",
+  {
+    videoKey: text("video_key").primaryKey(),
+    trackId: integer("track_id")
+      .notNull()
+      .references(() => tracks.id),
+    createdAt: integer("created_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (t) => [index("track_videos_track_idx").on(t.trackId)]
+);
+
 export type Track = typeof tracks.$inferSelect;
 export type Revision = typeof revisions.$inferSelect;
 export type Signal = typeof signals.$inferSelect;
 export type LineObservation = typeof lineObservations.$inferSelect;
+export type TrackVideo = typeof trackVideos.$inferSelect;

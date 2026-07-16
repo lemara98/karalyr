@@ -21,6 +21,7 @@ export function Contribute() {
   const [title, setTitle] = useState("");
   const [album, setAlbum] = useState("");
   const [duration, setDuration] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
 
   const [raw, setRaw] = useState("");
   const [format, setFormat] = useState<ImportFormat | "auto">("auto");
@@ -72,6 +73,7 @@ export function Contribute() {
         track_name: title.trim(),
         album_name: album.trim() || null,
         duration: durationSeconds,
+        video_url: videoUrl.trim() || null,
       };
       if (mode === "paste") {
         body.raw = raw;
@@ -124,6 +126,15 @@ export function Contribute() {
             min={1}
             value={duration}
             onChange={(e) => setDuration(e.target.value)}
+          />
+        </label>
+        <label className="col-span-2 text-sm text-[color:var(--color-text-muted)] sm:col-span-4">
+          YouTube or Spotify URL
+          <input
+            className="field mt-1.5"
+            placeholder="https://www.youtube.com/watch?v=… or https://open.spotify.com/track/… (lets players find these lyrics by source)"
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
           />
         </label>
       </div>

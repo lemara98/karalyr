@@ -1,12 +1,14 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "./client";
 import {
   revisions,
   tracks,
+  trackVideos,
   type Revision,
   type Source,
   type Tier,
   type Track,
+  type TrackVideo,
 } from "./schema";
 import type { LyricsPayload } from "../formats";
 import { computeBestRevision } from "../ranking";
@@ -50,6 +52,36 @@ export async function findTrack(db: Db, q: TrackQuery): Promise<Track | null> {
       ? t
       : best
   );
+}
+
+/** Exact lookup by video key ("yt:<id>", see lib/video-key.ts). */
+export async function findTrackByVideo(db: Db, videoKey: string): Promise<Track | null> {
+  const [row] = await db
+    .select({ track: tracks })
+    .from(trackVideos)
+    .innerJoin(tracks, eq(tracks.id, trackVideos.trackId))
+    .where(eq(trackVideos.videoKey, videoKey));
+  return row?.track ?? null;
+}
+
+/**
+ * Map a video to a track. Last write wins on conflict so a re-import with
+ * corrected metadata repoints the video instead of sticking to the old row.
+ */
+export async function linkTrackVideo(db: Db, trackId: number, videoKey: string): Promise<void> {
+  await db
+    .insert(trackVideos)
+    .values({ videoKey, trackId, createdAt: Date.now() })
+    .onConflictDoUpdate({ target: trackVideos.videoKey, set: { trackId } });
+}
+
+/** All videos linked to a track, oldest first (videoKey tiebreak for determinism). */
+export async function listTrackVideos(db: Db, trackId: number): Promise<TrackVideo[]> {
+  return db
+    .select()
+    .from(trackVideos)
+    .where(eq(trackVideos.trackId, trackId))
+    .orderBy(asc(trackVideos.createdAt), asc(trackVideos.videoKey));
 }
 
 export async function findOrCreateTrack(

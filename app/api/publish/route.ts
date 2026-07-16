@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getDb } from "@/lib/db/client";
-import { findOrCreateTrack, insertRevision } from "@/lib/db/queries";
+import { findOrCreateTrack, insertRevision, linkTrackVideo } from "@/lib/db/queries";
+import { deriveVideoKey } from "@/lib/video-key";
 import { apiError, corsOptions, json } from "@/lib/api-helpers";
 import { fingerprintFromRequest } from "@/lib/fingerprint";
 import {
@@ -25,6 +26,12 @@ const bodySchema = z.object({
   format: z.enum(["lrc", "enhanced_lrc", "ultrastar"]).optional(),
   source: z.enum(["user_submission", "ultrastar_import", "correction"]).default("user_submission"),
   parent_revision_id: z.number().int().positive().nullish(),
+  // Optional: URL or id of the video/track these lyrics were synced against,
+  // so clients can later resolve the track by source (exact, no name
+  // matching). Accepts YouTube and Spotify URLs/ids alike; youtube_url is the
+  // older name kept for compatibility.
+  video_url: z.string().max(500).nullish(),
+  youtube_url: z.string().max(500).nullish(),
 });
 
 export async function POST(req: Request) {
@@ -76,6 +83,9 @@ export async function POST(req: Request) {
     albumName: body.album_name ?? null,
     durationSeconds: body.duration,
   });
+
+  const videoKey = deriveVideoKey(body.video_url ?? body.youtube_url);
+  if (videoKey) await linkTrackVideo(db, track.id, videoKey);
 
   const source = body.source === "user_submission" && body.parent_revision_id ? "correction" : body.source;
   const revision = await insertRevision(db, {
