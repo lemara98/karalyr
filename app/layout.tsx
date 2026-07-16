@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Geist_Mono, Space_Grotesk } from "next/font/google";
 import { Logo } from "@/components/Logo";
 import { KaralyrMark } from "@/components/KaralyrMark";
+import { HeaderAuth } from "@/components/HeaderAuth";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -68,9 +69,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 Admin
               </Link>
             </nav>
-            <Link href="/contribute" className="btn btn-primary btn-sm">
-              Open Studio
-            </Link>
+            <div className="flex items-center gap-3 sm:gap-4">
+              <Link href="/contribute" className="btn btn-primary btn-sm">
+                Open Studio
+              </Link>
+              <HeaderAuth />
+            </div>
           </div>
         </header>
 
