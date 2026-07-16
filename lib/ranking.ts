@@ -11,13 +11,19 @@ import {
 
 /**
  * Net quality score for a revision: distinct fingerprints for each positive
- * type (explicit_up, clean_playthrough) minus distinct fingerprints for
- * explicit_down. Duplicate signals from one fingerprint count once per type.
+ * type (explicit_up, clean_playthrough) minus distinct fingerprints for the
+ * negatives (explicit_down and content_report — wrong lyrics content).
+ * Duplicate signals from one fingerprint count once per type.
  */
 export function netScore(revisionSignals: Signal[]): number {
   const byType = (type: Signal["type"]) =>
     new Set(revisionSignals.filter((s) => s.type === type).map((s) => s.fingerprint)).size;
-  return byType("explicit_up") + byType("clean_playthrough") - byType("explicit_down");
+  return (
+    byType("explicit_up") +
+    byType("clean_playthrough") -
+    byType("explicit_down") -
+    byType("content_report")
+  );
 }
 
 /**

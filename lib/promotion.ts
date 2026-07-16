@@ -18,8 +18,9 @@ function nextTier(tier: Tier): Tier {
  * Run promotion rules for a revision after a signal insert.
  *
  * Rule A: >= 3 positive signals (explicit_up / clean_playthrough) from
- * distinct fingerprints since the last promotion, and no explicit_down in
- * the past 7 days -> promote one tier (capped at verified).
+ * distinct fingerprints since the last promotion, and no negative signal
+ * (explicit_down or content_report) in the past 7 days -> promote one tier
+ * (capped at verified).
  *
  * Rule B: >= 3 offset_correction signals from distinct fingerprints, newer
  * than the latest auto-correction child, all within +-150ms of their
@@ -71,10 +72,13 @@ async function checkTierPromotion(
   );
   if (positiveFingerprints.size < PROMOTION_THRESHOLD) return false;
 
-  const recentDown = revisionSignals.some(
-    (s) => s.type === "explicit_down" && s.createdAt > now - RECENT_DOWN_WINDOW_MS
+  // A recent thumbs-down or lyrics-content report holds the revision back.
+  const recentNegative = revisionSignals.some(
+    (s) =>
+      (s.type === "explicit_down" || s.type === "content_report") &&
+      s.createdAt > now - RECENT_DOWN_WINDOW_MS
   );
-  if (recentDown) return false;
+  if (recentNegative) return false;
 
   await db
     .update(revisions)

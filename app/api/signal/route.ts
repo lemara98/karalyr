@@ -7,13 +7,23 @@ import { fingerprintFromRequest } from "@/lib/fingerprint";
 import { runPromotionChecks } from "@/lib/promotion";
 import { computeBestRevision } from "@/lib/ranking";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { MAX_REPORT_NOTE_LENGTH, REPORT_REASON_VALUES } from "@/lib/reports";
 import { getKvStore } from "@/lib/stores/memory";
 
 const bodySchema = z.object({
   revision_id: z.number().int().positive(),
-  type: z.enum(["explicit_up", "explicit_down", "offset_correction", "clean_playthrough"]),
+  type: z.enum([
+    "explicit_up",
+    "explicit_down",
+    "offset_correction",
+    "clean_playthrough",
+    "content_report",
+  ]),
   // Offset in ms for offset_correction; clamped to +-60s.
   value: z.number().int().min(-60_000).max(60_000).nullish(),
+  // content_report only: why the lyrics content is wrong, plus an optional note.
+  reason: z.enum(REPORT_REASON_VALUES).nullish(),
+  note: z.string().trim().max(MAX_REPORT_NOTE_LENGTH).nullish(),
 });
 
 export async function POST(req: Request) {
@@ -27,6 +37,9 @@ export async function POST(req: Request) {
 
   if (body.type === "offset_correction" && body.value == null) {
     return apiError(400, "BadRequest", "offset_correction requires value (offset in ms)");
+  }
+  if (body.type === "content_report" && !body.reason) {
+    return apiError(400, "BadRequest", "content_report requires reason");
   }
 
   const fingerprint = fingerprintFromRequest(req);
@@ -68,6 +81,8 @@ export async function POST(req: Request) {
     revisionId: body.revision_id,
     type: body.type,
     value: body.type === "offset_correction" ? body.value : null,
+    reason: body.type === "content_report" ? body.reason : null,
+    note: body.type === "content_report" ? body.note || null : null,
     fingerprint,
     createdAt: Date.now(),
   });

@@ -33,6 +33,10 @@ export const SIGNAL_TYPES = [
   "explicit_down",
   "offset_correction",
   "clean_playthrough",
+  // Flags that the lyrics *content* is wrong (wrong/missing words, wrong song)
+  // — distinct from offset_correction, which is about timing. Carries `reason`
+  // + optional `note`; counts as a negative in ranking/promotion.
+  "content_report",
 ] as const;
 export type SignalType = (typeof SIGNAL_TYPES)[number];
 
@@ -84,6 +88,10 @@ export const signals = sqliteTable(
       .references(() => revisions.id),
     type: text("type", { enum: SIGNAL_TYPES }).notNull(),
     value: integer("value"),
+    // content_report only: the report reason (see lib/reports.ts) and an
+    // optional free-text note. Null for every timing/vote signal.
+    reason: text("reason"),
+    note: text("note"),
     fingerprint: text("fingerprint").notNull(),
     createdAt: integer("created_at")
       .notNull()

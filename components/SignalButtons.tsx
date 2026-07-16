@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ReportLyricsDialog } from "@/components/ReportLyricsDialog";
 
 export function SignalButtons({ revisionId }: { revisionId: number }) {
   const router = useRouter();
@@ -50,6 +51,7 @@ export function SignalButtons({ revisionId }: { revisionId: number }) {
         <button className="btn btn-ghost btn-sm" onClick={() => setOffsetOpen(!offsetOpen)}>
           ⏱ Report timing offset
         </button>
+        <ReportLyricsDialog revisionId={revisionId} />
       </div>
       {offsetOpen && (
         <form

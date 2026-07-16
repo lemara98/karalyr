@@ -27,6 +27,8 @@ function sig(revisionId: number, overrides: Partial<Signal>): Signal {
     revisionId,
     type: "explicit_up",
     value: null,
+    reason: null,
+    note: null,
     fingerprint: "fp-1",
     createdAt: 1000,
     ...overrides,
