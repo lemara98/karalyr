@@ -21,6 +21,12 @@ export const LINE_MATCH_TOLERANCE_MS = 500;
 export const MIN_OBSERVATION_CONFIDENCE = 0.3;
 /** A re-stitch must cover at least this many MORE lines than the last one. */
 export const RESTITCH_MIN_IMPROVEMENT = 2;
+/**
+ * Minimum age of the previous stitch before publishing another. Without
+ * this, coverage growing line-by-line DURING a playthrough publishes a
+ * revision every couple of observations (seen: 7 revisions in one song).
+ */
+export const RESTITCH_MIN_INTERVAL_MS = 3 * 60 * 1000;
 
 interface ObservedWords {
   words: Word[];
@@ -137,6 +143,7 @@ export async function runStitchCheck(db: Db, trackId: number): Promise<number | 
   if (covered < required) return null;
 
   if (isOwnStitch) {
+    if (Date.now() - best.createdAt < RESTITCH_MIN_INTERVAL_MS) return null;
     const prevCovered = basePayload.lines.filter((l) => l.words && l.words.length > 0).length;
     if (covered < prevCovered + RESTITCH_MIN_IMPROVEMENT) return null;
   }

@@ -157,24 +157,33 @@ describe("runStitchCheck", () => {
     expect(stitchedPayload.lines[4].words).toBeUndefined();
   });
 
-  it("re-stitches only on meaningful coverage improvement", async () => {
+  it("re-stitches only on meaningful coverage improvement, after the debounce", async () => {
     const db = await makeDb();
     const { track, payload } = await makeBaseTrack(db);
     for (const i of [0, 1, 2]) await insertObs(db, track.id, payload.lines[i]);
     // first run publishes (3 covered)
-    await runStitchCheck(db, track.id);
+    const firstId = await runStitchCheck(db, track.id);
+    expect(firstId).not.toBeNull();
     const first = await db.select().from(revisions).where(eq(revisions.trackId, track.id));
     expect(first).toHaveLength(2);
 
-    // same coverage -> no new revision
-    expect(await runStitchCheck(db, track.id)).toBeNull();
-    // +1 line only -> below RESTITCH_MIN_IMPROVEMENT (2) -> still null
+    // full coverage reached immediately -> still debounced (too fresh)
     await insertObs(db, track.id, payload.lines[3]);
-    expect(await runStitchCheck(db, track.id)).toBeNull();
-    // +2 lines -> re-stitch
     await insertObs(db, track.id, payload.lines[4]);
+    expect(await runStitchCheck(db, track.id)).toBeNull();
+
+    // age the previous stitch past the debounce window
+    const aged = Date.now() - 10 * 60 * 1000;
+    await db.update(revisions).set({ createdAt: aged }).where(eq(revisions.id, firstId!));
+
+    // same coverage as the stitch (5) vs previous covered (3): +2 -> re-stitch
     const id = await runStitchCheck(db, track.id);
     expect(id).not.toBeNull();
+
+    // aged again but no further improvement -> null
+    await db.update(revisions).set({ createdAt: aged }).where(eq(revisions.id, id!));
+    expect(await runStitchCheck(db, track.id)).toBeNull();
+
     const all = await db.select().from(revisions).where(eq(revisions.trackId, track.id));
     expect(all).toHaveLength(3);
   });
