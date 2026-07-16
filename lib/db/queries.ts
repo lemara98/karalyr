@@ -150,6 +150,7 @@ export async function insertRevision(db: Db, input: NewRevisionInput): Promise<R
 
 export interface SearchResult extends Track {
   bestTier: Tier | null;
+  bestHasWordTiming: boolean;
 }
 
 /** FTS5 prefix search over artist/title/album, best matches first. */
@@ -171,8 +172,10 @@ export async function searchTracks(db: Db, query: string, limit = 25): Promise<S
     best_revision_id: number | null;
     created_at: number;
     best_tier: Tier | null;
+    best_has_words: number | null;
   }>(sql`
-    SELECT t.*, r.tier AS best_tier
+    SELECT t.*, r.tier AS best_tier,
+      json_extract(r.payload, '$.meta.has_word_timing') AS best_has_words
     FROM tracks_fts f
     JOIN tracks t ON t.id = f.rowid
     LEFT JOIN revisions r ON r.id = t.best_revision_id
@@ -190,6 +193,7 @@ export async function searchTracks(db: Db, query: string, limit = 25): Promise<S
     bestRevisionId: r.best_revision_id,
     createdAt: r.created_at,
     bestTier: r.best_tier,
+    bestHasWordTiming: r.best_has_words === 1,
   }));
 }
 

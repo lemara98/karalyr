@@ -26,7 +26,11 @@ export async function GET(req: Request) {
       albumName: t.albumName,
       duration: t.durationSeconds,
       instrumental: false,
-      karalyr: { tier: t.bestTier, has_lyrics: t.bestRevisionId !== null },
+      karalyr: {
+        tier: t.bestTier,
+        has_lyrics: t.bestRevisionId !== null,
+        has_word_timing: t.bestHasWordTiming,
+      },
     }))
   );
 }

@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { countDistinct, count, sql } from "drizzle-orm";
+import { countDistinct, count, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { revisions, tracks } from "@/lib/db/schema";
 import { KaralyrMark } from "@/components/KaralyrMark";
-import { LyricsDemo, TapStrip } from "@/components/LyricsDemo";
+import { LyricsDemo } from "@/components/LyricsDemo";
 import { SearchBox } from "@/components/SearchBox";
 
 export const dynamic = "force-dynamic";
@@ -84,7 +84,7 @@ const STEPS = [
 
 export default async function HomePage() {
   const db = getDb();
-  const [[trackStats], [revisionStats]] = await Promise.all([
+  const [[trackStats], [revisionStats], [lyricsStats]] = await Promise.all([
     db.select({ n: count() }).from(tracks),
     db
       .select({
@@ -93,6 +93,7 @@ export default async function HomePage() {
       })
       .from(revisions)
       .where(sql`${revisions.submitterFingerprint} NOT LIKE 'system:%'`),
+    db.select({ n: count() }).from(tracks).where(isNotNull(tracks.bestRevisionId)),
   ]);
 
   return (
@@ -142,7 +143,6 @@ export default async function HomePage() {
           </div>
           <div>
             <LyricsDemo />
-            <TapStrip />
           </div>
         </div>
       </section>
@@ -152,11 +152,17 @@ export default async function HomePage() {
         <div className="mx-auto max-w-6xl px-6 py-16">
           <p className="klr-eyebrow">THE LIBRARY</p>
           <h2
-            className="mb-7 mt-2.5 text-[32px] font-bold tracking-[-0.02em]"
+            className="mb-3 mt-2.5 text-[32px] font-bold tracking-[-0.02em]"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Find a song, sing it tonight
           </h2>
+          <p className="mb-7 text-[15px] text-[color:var(--color-text-muted)]">
+            <span style={{ fontFamily: "var(--font-mono)" }}>
+              {lyricsStats.n.toLocaleString("en-US")}
+            </span>{" "}
+            {lyricsStats.n === 1 ? "song has" : "songs have"} karaoke lyrics ready to sing.
+          </p>
           <SearchBox />
         </div>
       </section>

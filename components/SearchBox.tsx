@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { TierBadge } from "./TierBadge";
+import { WordSyncBadge } from "./WordSyncBadge";
 import type { Tier } from "@/lib/db/schema";
 
 interface Result {
@@ -11,7 +12,7 @@ interface Result {
   artistName: string;
   albumName: string | null;
   duration: number;
-  karalyr: { tier: Tier | null; has_lyrics: boolean };
+  karalyr: { tier: Tier | null; has_lyrics: boolean; has_word_timing: boolean };
 }
 
 function formatDuration(seconds: number): string {
@@ -92,6 +93,7 @@ export function SearchBox() {
                   <span style={{ fontFamily: "var(--font-mono)" }}>
                     {formatDuration(r.duration)}
                   </span>
+                  {r.karalyr.has_word_timing && <WordSyncBadge />}
                   <TierBadge tier={r.karalyr.tier} />
                 </span>
               </Link>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
 
 /**
  * Self-running karaoke demo for the hero: loops original placeholder lyrics
@@ -37,6 +37,7 @@ export function LyricsDemo() {
   const lineProgress = Math.min((now - activeIndex * LINE_MS) / (LINE_MS - 350), 1);
 
   return (
+    <>
     <div className="klr-card overflow-hidden">
       <div className="flex items-center justify-between border-b border-white/5 px-4 py-2.5">
         <span className="klr-eyebrow !text-[11px]">NOW SYNCING</span>
@@ -61,11 +62,24 @@ export function LyricsDemo() {
                     : j <= sungCount
                       ? "singing"
                       : "upcoming";
+                // sungCount is fractional: the part past `j` is exactly how
+                // far the singing word's liquid sweep has come.
+                const fill =
+                  state === "singing" ? Math.round((sungCount - j) * 100) : undefined;
                 // Space outside the span: .word is inline-block, which
                 // trims trailing whitespace inside it.
                 return (
                   <Fragment key={j}>
-                    <span className={`word ${state}`}>{w}</span>
+                    <span
+                      className={`word ${state}`}
+                      style={
+                        fill !== undefined
+                          ? ({ "--word-progress": `${fill}%` } as CSSProperties)
+                          : undefined
+                      }
+                    >
+                      {w}
+                    </span>
                     {j < words.length - 1 ? " " : ""}
                   </Fragment>
                 );
@@ -75,37 +89,72 @@ export function LyricsDemo() {
         })}
       </div>
     </div>
+    <TapStrip now={now} />
+    </>
   );
 }
 
-/** Decorative tap-timing strip under the hero demo, from the design doc. */
-export function TapStrip() {
-  const bars = [
-    [0, 11.5, 5], [5, 9.5, 9], [10, 7, 14], [15, 4, 20], [20, 8, 12], [25, 11, 6],
-    [30, 9, 10], [35, 6, 16], [40, 3, 22], [45, 5.5, 17], [50, 9.5, 9], [55, 11.5, 5],
-    [60, 8, 12], [65, 4.5, 19], [70, 2, 24], [75, 7, 14], [80, 10, 8], [85, 8.5, 11],
-    [90, 5.5, 17], [95, 3.5, 21], [100, 7.5, 13], [105, 10.5, 7], [110, 6.5, 15], [115, 9.5, 9],
-  ];
+const STRIP_BARS = [
+  [0, 11.5, 5], [5, 9.5, 9], [10, 7, 14], [15, 4, 20], [20, 8, 12], [25, 11, 6],
+  [30, 9, 10], [35, 6, 16], [40, 3, 22], [45, 5.5, 17], [50, 9.5, 9], [55, 11.5, 5],
+  [60, 8, 12], [65, 4.5, 19], [70, 2, 24], [75, 7, 14], [80, 10, 8], [85, 8.5, 11],
+  [90, 5.5, 17], [95, 3.5, 21], [100, 7.5, 13], [105, 10.5, 7], [110, 6.5, 15], [115, 9.5, 9],
+];
+
+/** The fictional song starts at this position/line when the demo loop restarts. */
+const STRIP_BASE_MS = 42310 - 310;
+const STRIP_BASE_LINE = 7;
+
+function fmtClock(ms: number): string {
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const c = Math.floor((ms % 1000) / 10);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(c).padStart(2, "0")}`;
+}
+
+/**
+ * Decorative tap-timing strip under the hero demo, from the design doc.
+ * Runs on the demo's clock: each lyric line above is one "tap" here — the
+ * pill presses, a bar lights up, the line counter advances.
+ */
+function TapStrip({ now }: { now: number }) {
+  const rawLine = Math.floor(now / LINE_MS); // reaches DEMO_LINES.length in the loop tail
+  const lineNo = STRIP_BASE_LINE + Math.min(rawLine, DEMO_LINES.length - 1);
+  const currentBar = lineNo - 1; // 0-based bar of the line being tapped
+  const pressed = rawLine < DEMO_LINES.length && now % LINE_MS < 160;
+  // The current bar breathes while "recording" its tap.
+  const wobble = 0.75 + 0.45 * (0.5 + 0.5 * Math.sin(now / 110));
+
   return (
     <div className="klr-card mt-3 flex items-center gap-3.5 px-4 py-3">
       <span
-        className="flex-none text-xs text-[color:var(--color-text-dim)]"
+        className="flex-none text-xs tabular-nums text-[color:var(--color-text-dim)]"
         style={{ fontFamily: "var(--font-mono)" }}
       >
-        00:42.31
+        {fmtClock(STRIP_BASE_MS + now)}
       </span>
       <svg viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true" className="h-7 min-w-0 flex-1">
-        {bars.map(([x, y, h], i) => (
-          <rect
-            key={i}
-            x={x}
-            y={y}
-            width={3}
-            height={h}
-            rx={1}
-            fill={i < 10 ? "var(--klr-b)" : "rgba(255,255,255,0.18)"}
-          />
-        ))}
+        {STRIP_BARS.map(([x, y, h], i) => {
+          const isCurrent = i === currentBar;
+          const height = isCurrent ? h * wobble : h;
+          return (
+            <rect
+              key={i}
+              x={x}
+              y={isCurrent ? 14 - height / 2 : y}
+              width={3}
+              height={height}
+              rx={1}
+              fill={
+                isCurrent
+                  ? "var(--klr-hi)"
+                  : i < currentBar
+                    ? "var(--klr-b)"
+                    : "rgba(255,255,255,0.18)"
+              }
+            />
+          );
+        })}
       </svg>
       <span
         className="flex-none rounded-full px-3 py-1 text-[11px] tracking-[0.1em]"
@@ -113,16 +162,20 @@ export function TapStrip() {
           fontFamily: "var(--font-mono)",
           color: "var(--klr-hi)",
           border: "1px solid color-mix(in srgb, var(--klr-b) 45%, transparent)",
-          background: "color-mix(in srgb, var(--klr-b) 10%, transparent)",
+          background: pressed
+            ? "color-mix(in srgb, var(--klr-b) 32%, transparent)"
+            : "color-mix(in srgb, var(--klr-b) 10%, transparent)",
+          transform: pressed ? "scale(0.92)" : "scale(1)",
+          transition: "transform 0.15s ease, background 0.15s ease",
         }}
       >
         TAP
       </span>
       <span
-        className="flex-none text-xs text-[color:var(--color-text-dim)]"
+        className="flex-none text-xs tabular-nums text-[color:var(--color-text-dim)]"
         style={{ fontFamily: "var(--font-mono)" }}
       >
-        line 7 / 24
+        line {lineNo} / 24
       </span>
     </div>
   );
