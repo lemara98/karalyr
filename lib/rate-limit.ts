@@ -20,4 +20,5 @@ export const RATE_LIMITS = {
   publish: { limit: 10, windowMs: 60 * 60 * 1000 }, // 10 publishes/hour/fingerprint
   signal: { limit: 30, windowMs: 60 * 60 * 1000 }, // 30 signals/hour/fingerprint
   challenge: { limit: 30, windowMs: 60 * 60 * 1000 },
+  comment: { limit: 10, windowMs: 60 * 60 * 1000 }, // 10 comments/hour/user (Supabase uid)
 } as const;

@@ -5,6 +5,7 @@ import { listTrackVideos } from "@/lib/db/queries";
 import { revisions, tracks } from "@/lib/db/schema";
 import { validatePayload } from "@/lib/formats";
 import { parseVideoKey, pickPreferredVideoKey } from "@/lib/video-key";
+import { AnnotatedLyrics } from "@/components/AnnotatedLyrics";
 import { ExportButtons } from "@/components/ExportButtons";
 import { LyricsPlayer } from "@/components/LyricsPlayer";
 import { RevisionList } from "@/components/RevisionList";
@@ -91,6 +92,7 @@ export default async function TrackPage({
               baseName={`${track.artistName} - ${track.trackName}`}
             />
           </div>
+          <AnnotatedLyrics trackId={track.id} revisionId={best.id} payload={payload} />
         </>
       ) : (
         <>

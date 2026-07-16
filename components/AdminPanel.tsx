@@ -5,6 +5,20 @@ import { TierBadge } from "./TierBadge";
 import type { Source, Tier } from "@/lib/db/schema";
 import type { LyricsPayload } from "@/lib/formats/types";
 
+interface AdminComment {
+  id: number;
+  track_id: number;
+  artist_name: string;
+  track_name: string;
+  start_line: number;
+  end_line: number;
+  quote: string;
+  body: string;
+  author_name: string | null;
+  author_user_id: string;
+  created_at: number;
+}
+
 interface PendingItem {
   revision: {
     id: number;
@@ -74,6 +88,7 @@ export function AdminPanel() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [token, setToken] = useState("");
   const [items, setItems] = useState<PendingItem[] | null>(null);
+  const [comments, setComments] = useState<AdminComment[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [revertId, setRevertId] = useState("");
 
@@ -86,6 +101,12 @@ export function AdminPanel() {
     setAuthed(true);
     const body = await res.json();
     setItems(body.items);
+
+    const commentsRes = await fetch("/api/admin/comments");
+    if (commentsRes.ok) {
+      const commentsBody = await commentsRes.json();
+      setComments(commentsBody.comments);
+    }
   }, []);
 
   useEffect(() => {
@@ -121,6 +142,18 @@ export function AdminPanel() {
         ? `${action} ok — best revision is now #${body.best_revision_id}`
         : body.message ?? "Action failed"
     );
+    load();
+  }
+
+  async function deleteComment(commentId: number) {
+    setMessage(null);
+    const res = await fetch("/api/admin/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comment_id: commentId, action: "delete" }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setMessage(res.ok ? `Comment #${commentId} deleted` : body.message ?? "Delete failed");
     load();
   }
 
@@ -202,6 +235,60 @@ export function AdminPanel() {
                   other={item.current_best?.payload ?? null}
                 />
               </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">
+          Lyric comments{" "}
+          {comments && (
+            <span className="text-[color:var(--color-text-dim)]">
+              (latest {comments.length})
+            </span>
+          )}
+        </h2>
+        {comments?.length === 0 && (
+          <p className="text-sm text-[color:var(--color-text-dim)]">No comments yet.</p>
+        )}
+        <div className="space-y-3">
+          {comments?.map((c) => (
+            <div key={c.id} className="klr-card flex flex-wrap items-start justify-between gap-3 p-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm">
+                  <a
+                    href={`/track/${c.track_id}`}
+                    className="font-medium text-[color:var(--klr-b)] hover:underline"
+                  >
+                    {c.artist_name} — {c.track_name}
+                  </a>
+                  <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">
+                    lines {c.start_line + 1}–{c.end_line + 1} ·{" "}
+                    {c.author_name ?? "Anonymous"}{" "}
+                    <span style={{ fontFamily: "var(--font-mono)" }}>
+                      ({c.author_user_id.slice(0, 8)})
+                    </span>{" "}
+                    · {new Date(c.created_at).toLocaleString()}
+                  </span>
+                </p>
+                <blockquote
+                  className="mt-1.5 truncate text-xs text-[color:var(--color-text-dim)]"
+                  style={{ fontFamily: "var(--font-mono)" }}
+                  title={c.quote}
+                >
+                  {c.quote.replaceAll("\n", " / ")}
+                </blockquote>
+                <p className="mt-1 break-words text-sm" title={c.body}>
+                  {c.body.length > 200 ? `${c.body.slice(0, 200)}…` : c.body}
+                </p>
+              </div>
+              <button
+                className="btn btn-secondary btn-sm !text-red-300"
+                onClick={() => deleteComment(c.id)}
+              >
+                Delete
+              </button>
             </div>
           ))}
         </div>

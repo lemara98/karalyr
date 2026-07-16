@@ -1,9 +1,11 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "./client";
 import {
+  lyricComments,
   revisions,
   tracks,
   trackVideos,
+  type LyricComment,
   type Revision,
   type Source,
   type Tier,
@@ -204,4 +206,57 @@ export async function listRevisions(db: Db, trackId: number): Promise<Revision[]
     .from(revisions)
     .where(eq(revisions.trackId, trackId))
     .orderBy(desc(revisions.createdAt), desc(revisions.id));
+}
+
+export interface NewLyricCommentInput {
+  trackId: number;
+  revisionId: number;
+  startLine: number;
+  endLine: number;
+  quote: string;
+  body: string;
+  authorUserId: string;
+  authorName: string | null;
+}
+
+export async function insertLyricComment(
+  db: Db,
+  input: NewLyricCommentInput
+): Promise<LyricComment> {
+  const [created] = await db
+    .insert(lyricComments)
+    .values({ ...input, createdAt: Date.now() })
+    .returning();
+  return created;
+}
+
+/** All comments on a track, oldest first. */
+export async function listLyricComments(db: Db, trackId: number): Promise<LyricComment[]> {
+  return db
+    .select()
+    .from(lyricComments)
+    .where(eq(lyricComments.trackId, trackId))
+    .orderBy(asc(lyricComments.createdAt), asc(lyricComments.id));
+}
+
+/** Newest comments across all tracks, joined with the track (admin view). */
+export async function listRecentLyricComments(
+  db: Db,
+  limit = 100
+): Promise<{ comment: LyricComment; track: Track }[]> {
+  return db
+    .select({ comment: lyricComments, track: tracks })
+    .from(lyricComments)
+    .innerJoin(tracks, eq(tracks.id, lyricComments.trackId))
+    .orderBy(desc(lyricComments.createdAt), desc(lyricComments.id))
+    .limit(limit);
+}
+
+/** Hard delete (admin moderation). Returns false when the id doesn't exist. */
+export async function deleteLyricComment(db: Db, id: number): Promise<boolean> {
+  const deleted = await db
+    .delete(lyricComments)
+    .where(eq(lyricComments.id, id))
+    .returning({ id: lyricComments.id });
+  return deleted.length > 0;
 }

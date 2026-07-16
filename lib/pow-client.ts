@@ -93,3 +93,17 @@ export async function solvePow(
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 }
+
+/**
+ * Full client choreography for PoW-gated writes: fetch a fresh challenge
+ * from /api/request-challenge, solve it, and return the fields the API
+ * expects in the request body's `challenge`.
+ */
+export async function requestAndSolveChallenge(
+  onProgress?: (p: PowProgress) => void
+): Promise<{ prefix: string; nonce: string }> {
+  const res = await fetch("/api/request-challenge", { method: "POST" });
+  if (!res.ok) throw new Error("Could not get a challenge — try again shortly");
+  const { prefix, target }: { prefix: string; target: string } = await res.json();
+  return { prefix, nonce: await solvePow(prefix, target, onProgress) };
+}

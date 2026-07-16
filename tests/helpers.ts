@@ -1,6 +1,14 @@
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { createTestDb, type Db } from "@/lib/db/client";
-import { revisions, signals, tracks, type Revision, type Signal } from "@/lib/db/schema";
+import {
+  lyricComments,
+  revisions,
+  signals,
+  tracks,
+  type LyricComment,
+  type Revision,
+  type Signal,
+} from "@/lib/db/schema";
 import type { LyricsPayload } from "@/lib/formats";
 
 export async function makeDb(): Promise<Db> {
@@ -68,6 +76,30 @@ export async function makeRevision(
     })
     .returning();
   return rev;
+}
+
+export async function makeComment(
+  db: Db,
+  trackId: number,
+  revisionId: number,
+  overrides: Partial<typeof lyricComments.$inferInsert> = {}
+): Promise<LyricComment> {
+  const [comment] = await db
+    .insert(lyricComments)
+    .values({
+      trackId,
+      revisionId,
+      startLine: 0,
+      endLine: 0,
+      quote: "Test line one",
+      body: "A test comment",
+      authorUserId: "00000000-0000-0000-0000-000000000001",
+      authorName: "Tester",
+      createdAt: Date.now(),
+      ...overrides,
+    })
+    .returning();
+  return comment;
 }
 
 export async function makeSignal(

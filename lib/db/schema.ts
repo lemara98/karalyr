@@ -135,8 +135,40 @@ export const trackVideos = sqliteTable(
   (t) => [index("track_videos_track_idx").on(t.trackId)]
 );
 
+// Genius-style comments anchored to whole-line ranges of a track's lyrics.
+// Indices are 0-based inclusive into the payload.lines of `revision_id` (the
+// best revision at post time); `quote` is a server-side snapshot of those
+// lines so the comment stays meaningful if the lyrics are later corrected.
+// Authors are shared Supabase accounts with karafilt.com.
+export const lyricComments = sqliteTable(
+  "lyric_comments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    trackId: integer("track_id")
+      .notNull()
+      .references(() => tracks.id),
+    revisionId: integer("revision_id")
+      .notNull()
+      .references(() => revisions.id),
+    startLine: integer("start_line").notNull(),
+    endLine: integer("end_line").notNull(),
+    quote: text("quote").notNull(),
+    body: text("body").notNull(),
+    authorUserId: text("author_user_id").notNull(),
+    authorName: text("author_name"),
+    createdAt: integer("created_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (t) => [
+    index("lyric_comments_track_idx").on(t.trackId, t.createdAt),
+    index("lyric_comments_author_idx").on(t.authorUserId),
+  ]
+);
+
 export type Track = typeof tracks.$inferSelect;
 export type Revision = typeof revisions.$inferSelect;
 export type Signal = typeof signals.$inferSelect;
 export type LineObservation = typeof lineObservations.$inferSelect;
 export type TrackVideo = typeof trackVideos.$inferSelect;
+export type LyricComment = typeof lyricComments.$inferSelect;
