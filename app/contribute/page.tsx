@@ -1,4 +1,5 @@
 import { Contribute } from "@/components/Contribute";
+import { localAlignAvailable } from "@/lib/align-local";
 
 export default function ContributePage() {
   return (
@@ -15,7 +16,7 @@ export default function ContributePage() {
         with the simulator. Every submission becomes a new revision — nothing
         is overwritten.
       </p>
-      <Contribute />
+      <Contribute aiAlignEnabled={localAlignAvailable()} />
     </div>
   );
 }

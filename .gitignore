@@ -9,3 +9,5 @@ data/
 *.tsbuildinfo
 next-env.d.ts
 .playwright-mcp/
+worker/.venv/
+worker/__pycache__/

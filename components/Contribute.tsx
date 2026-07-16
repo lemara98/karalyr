@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { AlignLocal } from "./AlignLocal";
 import { TapEditor } from "./TapEditor";
 import { detectFormat, parseByFormat, type ImportFormat } from "@/lib/formats";
 import type { LyricsPayload } from "@/lib/formats/types";
 import { solvePow } from "@/lib/pow-client";
 
-type Mode = "paste" | "tap";
+type Mode = "paste" | "tap" | "ai";
 
 interface PublishState {
   phase: "idle" | "solving" | "publishing" | "done" | "error";
@@ -15,7 +16,7 @@ interface PublishState {
   trackId?: number;
 }
 
-export function Contribute() {
+export function Contribute({ aiAlignEnabled = false }: { aiAlignEnabled?: boolean }) {
   const [mode, setMode] = useState<Mode>("paste");
   const [artist, setArtist] = useState("");
   const [title, setTitle] = useState("");
@@ -105,7 +106,7 @@ export function Contribute() {
 
   return (
     <div className="space-y-7">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className={mode === "ai" ? "hidden" : "grid grid-cols-2 gap-3 sm:grid-cols-4"}>
         <label className="text-sm text-[color:var(--color-text-muted)]">
           Artist *
           <input className="field mt-1.5" value={artist} onChange={(e) => setArtist(e.target.value)} />
@@ -140,16 +141,23 @@ export function Contribute() {
       </div>
 
       <div>
-        <div className="mb-3 flex gap-2">
+        <div className="mb-3 flex flex-wrap gap-2">
           <button className={tab(mode === "paste")} onClick={() => setMode("paste")}>
             Paste lyrics file
           </button>
           <button className={tab(mode === "tap")} onClick={() => setMode("tap")}>
             Tap timing editor
           </button>
+          {aiAlignEnabled && (
+            <button className={tab(mode === "ai")} onClick={() => setMode("ai")}>
+              🎯 AI align (local)
+            </button>
+          )}
         </div>
         <div className="klr-card p-5">
-          {mode === "paste" ? (
+          {mode === "ai" ? (
+            <AlignLocal />
+          ) : mode === "paste" ? (
             <div className="space-y-3">
               <textarea
                 value={raw}
@@ -194,7 +202,7 @@ export function Contribute() {
         </div>
       </div>
 
-      <div className="space-y-2.5">
+      <div className={mode === "ai" ? "hidden" : "space-y-2.5"}>
         <button
           onClick={publish}
           disabled={!ready || state.phase === "solving" || state.phase === "publishing"}
