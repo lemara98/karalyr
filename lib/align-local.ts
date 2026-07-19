@@ -3,10 +3,9 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { importAlignedPayload } from "./aligned-import";
 import { getDb } from "./db/client";
-import { findOrCreateTrack, insertRevision, linkTrackVideo } from "./db/queries";
 import { validatePayload } from "./formats";
-import { deriveVideoKey } from "./video-key";
 
 /**
  * Local alignment jobs: the Studio's "AI align" tab spawns worker/align.py
@@ -128,27 +127,20 @@ export function startAlignJob(input: AlignJobInput): AlignJob {
         );
       }
 
-      const db = getDb();
-      const trackRow = await findOrCreateTrack(db, {
-        artistName: artist,
-        trackName: track,
-        albumName: input.album?.trim() || null,
-        durationSeconds: duration,
-      });
-      // Remember which video this came from so /api/get?youtube_id=… resolves
-      // the track exactly, whatever the stored artist/title spelling.
-      const videoKey = deriveVideoKey(input.youtubeUrl);
-      if (videoKey) await linkTrackVideo(db, trackRow.id, videoKey);
-      const revision = await insertRevision(db, {
-        trackId: trackRow.id,
-        source: "auto_aligned",
-        tier: "auto_aligned",
+      const imported = await importAlignedPayload(getDb(), {
         payload,
+        artist,
+        track,
+        album: input.album,
+        duration,
+        videoUrl: input.youtubeUrl,
         submitterFingerprint: "system:offline-align",
       });
-      job.result = { trackId: trackRow.id, revisionId: revision.id };
+      job.result = { trackId: imported.trackId, revisionId: imported.revisionId };
       job.status = "done";
-      job.log.push(`[align] imported as revision #${revision.id} on track #${trackRow.id}`);
+      job.log.push(
+        `[align] imported as revision #${imported.revisionId} on track #${imported.trackId}`
+      );
     } catch (err) {
       job.status = "failed";
       job.error = (err as Error).message;
