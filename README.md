@@ -134,7 +134,7 @@ APIs — route handlers, libSQL, and nothing else.
 - **Later (VPS):** `npm run build && npm start` behind any reverse proxy;
   `DATABASE_URL` can stay Turso or go back to a local file.
 - **Important:** serve the API from a **custom domain you own** (e.g.
-  `api.karalyr.org`) from day one — never hand out the `*.vercel.app` URL.
+  `api.karalyr.com`) from day one — never hand out the `*.vercel.app` URL.
   Moving off Vercel is then only a DNS change and no client ever breaks.
 
 ## License
