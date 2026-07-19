@@ -1,0 +1,19 @@
+# Karalyr worker dependencies — mirrors the manual setup in worker/README.md.
+#
+# queue_worker.py (the queue daemon) is pure stdlib (Python 3.10+) and needs
+# NOTHING from this file. These packages are for align.py, the aligner it
+# runs, plus yt-dlp for --youtube jobs.
+#
+# torch/torchaudio should come from the CPU wheel index
+# (--index-url https://download.pytorch.org/whl/cpu) — pip can't scope an
+# index to individual packages inside a requirements file, so install in two
+# steps:
+#
+#   worker/.venv/bin/pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+#   worker/.venv/bin/pip install -r worker/requirements.txt
+#
+torch
+torchaudio
+demucs
+ctc-forced-aligner
+yt-dlp

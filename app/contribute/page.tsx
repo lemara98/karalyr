@@ -12,9 +12,9 @@ export default function ContributePage() {
         Sync a song
       </h1>
       <p className="mb-7 mt-2 text-sm text-[color:var(--color-text-muted)]">
-        Paste an LRC / Enhanced LRC / UltraStar file, or tap out line timing
-        with the simulator. Every submission becomes a new revision — nothing
-        is overwritten.
+        Paste an LRC / Enhanced LRC / UltraStar file, tap out line timing with
+        the simulator, or request an AI word-sync from a YouTube link. Every
+        submission becomes a new revision — nothing is overwritten.
       </p>
       <Contribute aiAlignEnabled={localAlignAvailable()} />
     </div>

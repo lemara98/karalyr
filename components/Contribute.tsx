@@ -1,19 +1,308 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlignLocal } from "./AlignLocal";
 import { TapEditor } from "./TapEditor";
 import { detectFormat, parseByFormat, type ImportFormat } from "@/lib/formats";
 import type { LyricsPayload } from "@/lib/formats/types";
 import { solvePow } from "@/lib/pow-client";
 
-type Mode = "paste" | "tap" | "ai";
+type Mode = "paste" | "tap" | "ai" | "request";
 
 interface PublishState {
   phase: "idle" | "solving" | "publishing" | "done" | "error";
   detail?: string;
   trackId?: number;
+}
+
+interface SyncRequestJob {
+  id: number;
+  status: string;
+  artist_name: string;
+  track_name: string;
+  video_url: string;
+  created_at: number | string;
+  last_error: string | null;
+  rejection_reason: string | null;
+  result_track_id: number | null;
+}
+
+/** Friendly copy for the documented /api/sync-queue/submit error codes. */
+function syncSubmitError(status: number, body: { name?: string; message?: string }): string {
+  switch (body.name) {
+    case "AlreadySynced":
+      return "This song already has word-synced lyrics.";
+    case "AlreadyQueued":
+      return "This song is already in the queue.";
+    case "UnsupportedSource":
+      return "Only YouTube links are supported.";
+    case "BadLyrics":
+      return "Need at least 4 lyric lines.";
+    case "QueueFull":
+      return "The queue is full right now — please try again later.";
+  }
+  if (status === 429) return "Daily limit reached — try again tomorrow.";
+  if (status === 503) return "The queue is full right now — please try again later.";
+  return body.message ?? `Request failed (${status})`;
+}
+
+function SyncStatusChip({ status }: { status: string }) {
+  const color =
+    status === "done"
+      ? "text-[color:var(--klr-hi)]"
+      : status === "failed"
+        ? "text-red-400"
+        : status === "rejected" || status === "cancelled"
+          ? "text-red-300"
+          : status === "processing"
+            ? "text-[color:var(--klr-a)]"
+            : "text-[color:var(--color-text-dim)]";
+  return (
+    <span
+      className={`rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider ${color}`}
+    >
+      {status.replaceAll("_", " ")}
+    </span>
+  );
+}
+
+function RequestSync() {
+  const [url, setUrl] = useState("");
+  const [artist, setArtist] = useState("");
+  const [title, setTitle] = useState("");
+  const [album, setAlbum] = useState("");
+  const [duration, setDuration] = useState("");
+  const [lyrics, setLyrics] = useState("");
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [mine, setMine] = useState<SyncRequestJob[] | null>(null);
+  const [state, setState] = useState<{ phase: "idle" | "submitting" | "done" | "error"; detail?: string }>({
+    phase: "idle",
+  });
+
+  const lineCount = lyrics.split("\n").filter((l) => l.trim()).length;
+  const busy = state.phase === "submitting";
+
+  const loadMine = useCallback(async () => {
+    const res = await fetch("/api/sync-queue/mine").catch(() => null);
+    if (!res) return;
+    if (res.status === 401) {
+      setSignedIn(false);
+      return;
+    }
+    // Non-401 errors: still show the form; submit will surface real problems.
+    setSignedIn(true);
+    if (!res.ok) return;
+    const body = await res.json().catch(() => ({}));
+    if (Array.isArray(body.jobs)) setMine(body.jobs);
+  }, []);
+
+  useEffect(() => {
+    loadMine();
+  }, [loadMine]);
+
+  async function submit() {
+    setState({ phase: "submitting" });
+    const body: Record<string, unknown> = {
+      video_url: url.trim(),
+      artist_name: artist.trim(),
+      track_name: title.trim(),
+      lyrics,
+    };
+    if (album.trim()) body.album_name = album.trim();
+    const d = parseFloat(duration);
+    if (Number.isFinite(d) && d > 0) body.duration = d;
+
+    const res = await fetch("/api/sync-queue/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).catch(() => null);
+    if (!res) {
+      setState({ phase: "error", detail: "Network error — please try again." });
+      return;
+    }
+    if (res.status === 401) {
+      setSignedIn(false);
+      return;
+    }
+    const resBody = await res.json().catch(() => ({}));
+    if (res.status === 201) {
+      setUrl("");
+      setArtist("");
+      setTitle("");
+      setAlbum("");
+      setDuration("");
+      setLyrics("");
+      setState({
+        phase: "done",
+        detail:
+          "Submitted — an admin will approve it, then the aligner processes it (usually within a day).",
+      });
+      loadMine();
+    } else {
+      setState({ phase: "error", detail: syncSubmitError(res.status, resBody) });
+    }
+  }
+
+  if (signedIn === null) {
+    return <p className="text-sm text-[color:var(--color-text-dim)]">Loading…</p>;
+  }
+
+  if (signedIn === false) {
+    return (
+      <p className="text-sm text-[color:var(--color-text-muted)]">
+        <Link
+          href="/login?next=/contribute"
+          className="text-[color:var(--klr-b)] hover:underline"
+        >
+          Sign in
+        </Link>{" "}
+        to request a sync.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm leading-relaxed text-[color:var(--color-text-muted)]">
+        No local setup needed: submit a YouTube link and plain lyrics, and the
+        aligner word-syncs the song on our end. An admin approves each request
+        before it runs.
+      </p>
+
+      <label className="block text-sm text-[color:var(--color-text-muted)]">
+        YouTube URL *
+        <input
+          className="field mt-1.5"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://www.youtube.com/watch?v=…"
+          disabled={busy}
+        />
+      </label>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <label className="text-sm text-[color:var(--color-text-muted)]">
+          Artist *
+          <input
+            className="field mt-1.5"
+            value={artist}
+            onChange={(e) => setArtist(e.target.value)}
+            disabled={busy}
+          />
+        </label>
+        <label className="text-sm text-[color:var(--color-text-muted)]">
+          Title *
+          <input
+            className="field mt-1.5"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            disabled={busy}
+          />
+        </label>
+        <label className="text-sm text-[color:var(--color-text-muted)]">
+          Album
+          <input
+            className="field mt-1.5"
+            value={album}
+            onChange={(e) => setAlbum(e.target.value)}
+            disabled={busy}
+          />
+        </label>
+        <label className="text-sm text-[color:var(--color-text-muted)]">
+          Duration (s)
+          <input
+            className="field mt-1.5"
+            type="number"
+            min={1}
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            disabled={busy}
+          />
+        </label>
+      </div>
+
+      <label className="block text-sm text-[color:var(--color-text-muted)]">
+        Plain lyrics * — one sung line per row; LRC-timestamped text is fine,
+        timings get stripped
+        {lineCount > 0 && (
+          <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">
+            {lineCount} lines
+          </span>
+        )}
+        <textarea
+          className="field mt-1.5 !rounded-xl text-sm"
+          style={{ fontFamily: "var(--font-mono)" }}
+          rows={10}
+          value={lyrics}
+          onChange={(e) => setLyrics(e.target.value)}
+          placeholder={"First sung line\nSecond sung line\n…"}
+          disabled={busy}
+        />
+      </label>
+
+      <button
+        onClick={submit}
+        disabled={busy || !url.trim() || !artist.trim() || !title.trim() || lineCount < 4}
+        className="btn btn-primary"
+      >
+        {busy ? "Submitting…" : "Request AI sync"}
+      </button>
+      {state.phase !== "idle" && state.detail && (
+        <p
+          className={`text-sm ${
+            state.phase === "error"
+              ? "text-red-400"
+              : state.phase === "done"
+                ? "text-[color:var(--klr-hi)]"
+                : "text-[color:var(--color-text-muted)]"
+          }`}
+        >
+          {state.detail}
+        </p>
+      )}
+
+      {mine && mine.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[color:var(--color-text-dim)]">
+            Your requests
+          </h3>
+          {mine.map((j) => (
+            <div
+              key={j.id}
+              className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm"
+            >
+              <span className="min-w-0 flex-1 truncate">
+                {j.artist_name} — {j.track_name}
+              </span>
+              <SyncStatusChip status={j.status} />
+              {j.status === "done" && j.result_track_id && (
+                <Link
+                  href={`/track/${j.result_track_id}`}
+                  className="text-[color:var(--klr-b)] hover:underline"
+                >
+                  View track →
+                </Link>
+              )}
+              {j.status === "failed" && j.last_error && (
+                <span className="text-xs text-red-400" title={j.last_error}>
+                  {j.last_error.length > 60 ? `${j.last_error.slice(0, 60)}…` : j.last_error}
+                </span>
+              )}
+              {j.status === "rejected" && j.rejection_reason && (
+                <span className="text-xs text-red-300" title={j.rejection_reason}>
+                  {j.rejection_reason.length > 60
+                    ? `${j.rejection_reason.slice(0, 60)}…`
+                    : j.rejection_reason}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function Contribute({ aiAlignEnabled = false }: { aiAlignEnabled?: boolean }) {
@@ -106,7 +395,13 @@ export function Contribute({ aiAlignEnabled = false }: { aiAlignEnabled?: boolea
 
   return (
     <div className="space-y-7">
-      <div className={mode === "ai" ? "hidden" : "grid grid-cols-2 gap-3 sm:grid-cols-4"}>
+      <div
+        className={
+          mode === "ai" || mode === "request"
+            ? "hidden"
+            : "grid grid-cols-2 gap-3 sm:grid-cols-4"
+        }
+      >
         <label className="text-sm text-[color:var(--color-text-muted)]">
           Artist *
           <input className="field mt-1.5" value={artist} onChange={(e) => setArtist(e.target.value)} />
@@ -153,10 +448,15 @@ export function Contribute({ aiAlignEnabled = false }: { aiAlignEnabled?: boolea
               🎯 AI align (local)
             </button>
           )}
+          <button className={tab(mode === "request")} onClick={() => setMode("request")}>
+            Request AI sync
+          </button>
         </div>
         <div className="klr-card p-5">
           {mode === "ai" ? (
             <AlignLocal />
+          ) : mode === "request" ? (
+            <RequestSync />
           ) : mode === "paste" ? (
             <div className="space-y-3">
               <textarea
@@ -202,7 +502,7 @@ export function Contribute({ aiAlignEnabled = false }: { aiAlignEnabled?: boolea
         </div>
       </div>
 
-      <div className={mode === "ai" ? "hidden" : "space-y-2.5"}>
+      <div className={mode === "ai" || mode === "request" ? "hidden" : "space-y-2.5"}>
         <button
           onClick={publish}
           disabled={!ready || state.phase === "solving" || state.phase === "publishing"}

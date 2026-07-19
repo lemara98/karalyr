@@ -1,0 +1,17 @@
+[Unit]
+Description=Karalyr queue worker (word-sync aligner pull daemon)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/karalyr-worker.env
+# Absolute paths to the worker venv's python and queue_worker.py — adjust if
+# the repo lives somewhere else (see worker/README.md, "Queue worker daemon").
+ExecStart=/home/milanknezevic/Desktop/karaoke/karalyr/worker/.venv/bin/python /home/milanknezevic/Desktop/karaoke/karalyr/worker/queue_worker.py
+Restart=always
+RestartSec=60
+Nice=10
+
+[Install]
+WantedBy=default.target

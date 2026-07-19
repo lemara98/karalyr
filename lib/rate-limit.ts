@@ -21,4 +21,6 @@ export const RATE_LIMITS = {
   signal: { limit: 30, windowMs: 60 * 60 * 1000 }, // 30 signals/hour/fingerprint
   challenge: { limit: 30, windowMs: 60 * 60 * 1000 },
   comment: { limit: 10, windowMs: 60 * 60 * 1000 }, // 10 comments/hour/user (Supabase uid)
+  syncQueueIntake: { limit: 20, windowMs: 24 * 60 * 60 * 1000 }, // 20 sync requests/day/user via the karafilt.com proxy
+  syncQueueSubmit: { limit: 10, windowMs: 24 * 60 * 60 * 1000 }, // 10 sync requests/day/user on the website
 } as const;

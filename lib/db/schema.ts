@@ -5,6 +5,7 @@ import {
   real,
   sqliteTable,
   text,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
 export const SOURCES = [
@@ -174,9 +175,88 @@ export const lyricComments = sqliteTable(
   ]
 );
 
+export const SYNC_JOB_SOURCES = ["extension", "website"] as const;
+export type SyncJobSource = (typeof SYNC_JOB_SOURCES)[number];
+
+export const SYNC_JOB_STATUSES = [
+  "pending_approval",
+  "queued",
+  "processing",
+  "done",
+  "failed",
+  "rejected",
+  "cancelled",
+] as const;
+export type SyncJobStatus = (typeof SYNC_JOB_STATUSES)[number];
+
+// Statuses that occupy the one live-job-per-video slot (enforced by the
+// partial unique index below).
+export const SYNC_JOB_ACTIVE_STATUSES = [
+  "pending_approval",
+  "queued",
+  "processing",
+] as const satisfies readonly SyncJobStatus[];
+
+// The word-sync request queue: songs waiting for the offline aligner
+// (worker/align.py) to produce word timings. Extension submissions arrive
+// pre-approved as "queued" via the karafilt.com proxy; website submissions
+// start as "pending_approval" until an admin approves them in /admin. A
+// pull-based worker claims "queued" rows over the /api/worker/* routes and
+// the result lands as an auto_aligned revision — the queue row only carries
+// intake data, lease bookkeeping, and the result pointers.
+export const syncJobs = sqliteTable(
+  "sync_jobs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    source: text("source", { enum: SYNC_JOB_SOURCES }).notNull(),
+    status: text("status", { enum: SYNC_JOB_STATUSES }).notNull(),
+    // Only "yt:" keys are accepted — the worker fetches audio with yt-dlp.
+    videoKey: text("video_key").notNull(),
+    videoUrl: text("video_url").notNull(),
+    artistName: text("artist_name").notNull(),
+    trackName: text("track_name").notNull(),
+    albumName: text("album_name"),
+    // Nullable: yt-dlp metadata backfills it at complete time if missing.
+    durationSeconds: real("duration_seconds"),
+    // LRC/word tags already stripped at intake — stored exactly as the
+    // aligner will read it (see stripToPlainLines).
+    plainLyrics: text("plain_lyrics").notNull(),
+    // Shared Supabase account id (same project as karafilt.com), whichever
+    // intake path the job came through.
+    submitterUserId: text("submitter_user_id").notNull(),
+    submitterName: text("submitter_name"),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(2),
+    claimedBy: text("claimed_by"),
+    leaseExpiresAt: integer("lease_expires_at"),
+    // Retry backoff gate: claim skips queued rows until this ms-epoch passes.
+    nextAttemptAt: integer("next_attempt_at"),
+    lastError: text("last_error"),
+    rejectionReason: text("rejection_reason"),
+    resultTrackId: integer("result_track_id").references(() => tracks.id),
+    resultRevisionId: integer("result_revision_id").references(() => revisions.id),
+    createdAt: integer("created_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (t) => [
+    index("sync_jobs_status_idx").on(t.status, t.createdAt),
+    index("sync_jobs_user_idx").on(t.submitterUserId, t.createdAt),
+    // At most one live job per video — the race-safe backstop behind the
+    // read-then-insert dedup in lib/sync-queue/core.ts.
+    uniqueIndex("sync_jobs_active_video_uq")
+      .on(t.videoKey)
+      .where(sql`status IN ('pending_approval', 'queued', 'processing')`),
+  ]
+);
+
 export type Track = typeof tracks.$inferSelect;
 export type Revision = typeof revisions.$inferSelect;
 export type Signal = typeof signals.$inferSelect;
 export type LineObservation = typeof lineObservations.$inferSelect;
 export type TrackVideo = typeof trackVideos.$inferSelect;
 export type LyricComment = typeof lyricComments.$inferSelect;
+export type SyncJob = typeof syncJobs.$inferSelect;

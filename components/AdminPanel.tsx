@@ -19,6 +19,51 @@ interface AdminComment {
   created_at: number;
 }
 
+interface SyncJob {
+  id: number;
+  source: "extension" | "website";
+  status: string;
+  video_key: string;
+  video_url: string;
+  artist_name: string;
+  track_name: string;
+  album_name: string | null;
+  duration_seconds: number | null;
+  plain_lyrics: string;
+  submitter_user_id: string | null;
+  submitter_name: string | null;
+  attempts: number;
+  max_attempts: number;
+  last_error: string | null;
+  rejection_reason: string | null;
+  result_track_id: number | null;
+  result_revision_id: number | null;
+  created_at: number | string;
+  updated_at: number | string;
+  lyrics_preview: string[];
+  line_count: number;
+}
+
+function SyncStatusChip({ status }: { status: string }) {
+  const color =
+    status === "done"
+      ? "text-[color:var(--klr-hi)]"
+      : status === "failed"
+        ? "text-red-400"
+        : status === "rejected" || status === "cancelled"
+          ? "text-red-300"
+          : status === "processing"
+            ? "text-[color:var(--klr-a)]"
+            : "text-[color:var(--color-text-dim)]";
+  return (
+    <span
+      className={`rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider ${color}`}
+    >
+      {status.replaceAll("_", " ")}
+    </span>
+  );
+}
+
 interface PendingItem {
   revision: {
     id: number;
@@ -91,6 +136,25 @@ export function AdminPanel() {
   const [comments, setComments] = useState<AdminComment[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [revertId, setRevertId] = useState("");
+  const [syncPending, setSyncPending] = useState<SyncJob[] | null>(null);
+  const [syncActive, setSyncActive] = useState<SyncJob[] | null>(null);
+  const [syncRecent, setSyncRecent] = useState<SyncJob[] | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const loadSync = useCallback(async () => {
+    const [pending, active, recent] = await Promise.all(
+      (["pending", "active", "recent"] as const).map(async (status) => {
+        const res = await fetch(`/api/admin/sync-queue?status=${status}`).catch(() => null);
+        if (!res?.ok) return null;
+        const body = await res.json().catch(() => ({}));
+        return (body.jobs ?? null) as SyncJob[] | null;
+      })
+    );
+    setSyncPending(pending);
+    setSyncActive(active);
+    setSyncRecent(recent);
+  }, []);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/pending");
@@ -102,12 +166,14 @@ export function AdminPanel() {
     const body = await res.json();
     setItems(body.items);
 
+    loadSync();
+
     const commentsRes = await fetch("/api/admin/comments");
     if (commentsRes.ok) {
       const commentsBody = await commentsRes.json();
       setComments(commentsBody.comments);
     }
-  }, []);
+  }, [loadSync]);
 
   useEffect(() => {
     load();
@@ -143,6 +209,32 @@ export function AdminPanel() {
         : body.message ?? "Action failed"
     );
     load();
+  }
+
+  async function moderateSync(
+    jobId: number,
+    action: "approve" | "reject" | "cancel" | "retry",
+    reason?: string
+  ) {
+    setMessage(null);
+    const res = await fetch("/api/admin/sync-queue/moderate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_id: jobId,
+        action,
+        ...(reason?.trim() ? { reason: reason.trim() } : {}),
+      }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      setMessage(`Sync job #${jobId} changed state in the meantime — refreshing…`);
+    } else {
+      setMessage(res.ok ? `Sync job #${jobId}: ${action} ok` : body.message ?? "Action failed");
+    }
+    setRejectTarget(null);
+    setRejectReason("");
+    loadSync();
   }
 
   async function deleteComment(commentId: number) {
@@ -235,6 +327,224 @@ export function AdminPanel() {
                   other={item.current_best?.payload ?? null}
                 />
               </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <h2 className="text-lg font-semibold">
+            Sync queue{" "}
+            {syncPending && (
+              <span className="text-[color:var(--color-text-dim)]">
+                ({syncPending.length} awaiting approval)
+              </span>
+            )}
+          </h2>
+          <button className="btn btn-ghost btn-sm" onClick={() => loadSync()}>
+            Refresh
+          </button>
+        </div>
+
+        {syncPending?.length === 0 && (
+          <p className="text-sm text-[color:var(--color-text-dim)]">
+            No sync requests awaiting approval.
+          </p>
+        )}
+        <div className="space-y-4">
+          {syncPending?.map((j) => (
+            <div key={j.id} className="klr-card p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="font-medium">
+                    {j.artist_name} — {j.track_name}
+                  </span>{" "}
+                  <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[color:var(--klr-a)]">
+                    {j.source}
+                  </span>
+                  <span className="ml-2 text-sm text-[color:var(--color-text-dim)]">
+                    job #{j.id} ·{" "}
+                    {j.submitter_name ??
+                      (j.submitter_user_id ? (
+                        <span style={{ fontFamily: "var(--font-mono)" }}>
+                          {j.submitter_user_id.slice(0, 8)}
+                        </span>
+                      ) : (
+                        "unknown"
+                      ))}{" "}
+                    · {new Date(j.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {rejectTarget === j.id ? (
+                    <form
+                      className="flex gap-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        moderateSync(j.id, "reject", rejectReason);
+                      }}
+                    >
+                      <input
+                        className="field !w-48 !py-1.5"
+                        placeholder="Reason (optional)"
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        autoFocus
+                      />
+                      <button className="btn btn-secondary btn-sm !text-red-300">
+                        Confirm
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                          setRejectTarget(null);
+                          setRejectReason("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                  ) : (
+                    <>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => moderateSync(j.id, "approve")}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm !text-red-300"
+                        onClick={() => {
+                          setRejectTarget(j.id);
+                          setRejectReason("");
+                        }}
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <p className="truncate text-xs">
+                <a
+                  href={j.video_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[color:var(--klr-b)] hover:underline"
+                >
+                  {j.video_url}
+                </a>
+              </p>
+              <details className="mt-2 text-xs">
+                <summary className="cursor-pointer text-[color:var(--color-text-dim)]">
+                  Lyrics preview ({j.line_count} lines)
+                </summary>
+                <div
+                  className="mt-1.5 rounded-xl border border-white/10 bg-black/20 p-2.5"
+                  style={{ fontFamily: "var(--font-mono)" }}
+                >
+                  {j.lyrics_preview.map((line, i) => (
+                    <p key={i} className="px-1 py-px">
+                      {line || " "}
+                    </p>
+                  ))}
+                  {j.line_count > j.lyrics_preview.length && (
+                    <p className="px-1 py-px text-[color:var(--color-text-dim)]">
+                      … {j.line_count - j.lyrics_preview.length} more lines
+                    </p>
+                  )}
+                </div>
+              </details>
+            </div>
+          ))}
+        </div>
+
+        <h3 className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wider text-[color:var(--color-text-dim)]">
+          Queue status
+        </h3>
+        {syncActive && (
+          <p className="mb-2 text-sm text-[color:var(--color-text-muted)]">
+            {syncActive.filter((j) => j.status === "queued").length} queued ·{" "}
+            {syncActive.filter((j) => j.status === "processing").length} processing
+          </p>
+        )}
+        {syncActive?.length === 0 && (
+          <p className="text-sm text-[color:var(--color-text-dim)]">Nothing in flight.</p>
+        )}
+        <div className="space-y-2">
+          {syncActive?.map((j) => (
+            <div
+              key={j.id}
+              className="klr-card flex flex-wrap items-center justify-between gap-3 px-4 py-2.5"
+            >
+              <div className="min-w-0 flex-1 text-sm">
+                <span className="font-medium">
+                  {j.artist_name} — {j.track_name}
+                </span>{" "}
+                <SyncStatusChip status={j.status} />
+                <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">
+                  attempt {j.attempts}/{j.max_attempts} ·{" "}
+                  {j.submitter_name ?? j.submitter_user_id?.slice(0, 8) ?? "unknown"}
+                </span>
+              </div>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => moderateSync(j.id, "cancel")}
+              >
+                Cancel
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <h3 className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wider text-[color:var(--color-text-dim)]">
+          Recent
+        </h3>
+        {syncRecent?.length === 0 && (
+          <p className="text-sm text-[color:var(--color-text-dim)]">No finished jobs yet.</p>
+        )}
+        <div className="space-y-2">
+          {syncRecent?.map((j) => (
+            <div
+              key={j.id}
+              className="klr-card flex flex-wrap items-center justify-between gap-3 px-4 py-2.5"
+            >
+              <div className="min-w-0 flex-1 text-sm">
+                <span className="font-medium">
+                  {j.artist_name} — {j.track_name}
+                </span>{" "}
+                <SyncStatusChip status={j.status} />
+                {j.status === "failed" && j.last_error && (
+                  <span className="ml-2 text-xs text-red-400" title={j.last_error}>
+                    {j.last_error.length > 80 ? `${j.last_error.slice(0, 80)}…` : j.last_error}
+                  </span>
+                )}
+                {j.status === "rejected" && j.rejection_reason && (
+                  <span className="ml-2 text-xs text-red-300" title={j.rejection_reason}>
+                    {j.rejection_reason.length > 80
+                      ? `${j.rejection_reason.slice(0, 80)}…`
+                      : j.rejection_reason}
+                  </span>
+                )}
+              </div>
+              {j.status === "failed" && (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => moderateSync(j.id, "retry")}
+                >
+                  Retry
+                </button>
+              )}
+              {j.status === "done" && j.result_track_id && (
+                <a
+                  href={`/track/${j.result_track_id}`}
+                  className="text-sm text-[color:var(--klr-b)] hover:underline"
+                >
+                  View track →
+                </a>
+              )}
             </div>
           ))}
         </div>

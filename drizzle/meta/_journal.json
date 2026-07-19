@@ -43,6 +43,13 @@
       "when": 1784148950299,
       "tag": "0005_white_ultragirl",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1784288965956,
+      "tag": "0006_dark_shinobi_shaw",
+      "breakpoints": true
     }
   ]
 }
