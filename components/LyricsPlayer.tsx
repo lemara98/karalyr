@@ -124,6 +124,7 @@ export function LyricsView({
 }) {
   const { timeMs } = clock;
   const activeRef = useRef<HTMLElement | null>(null);
+  const linesRef = useRef<HTMLDivElement | null>(null);
 
   // Focus mode (from the Karafilt side panel): show three lines at a time
   // and swap pages when the active line crosses a boundary. Persisted.
@@ -205,7 +206,16 @@ export function LyricsView({
   useEffect(() => {
     // Focus mode swaps pages instead of scrolling.
     if (focus) return;
-    activeRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    const el = activeRef.current;
+    const box = linesRef.current;
+    if (!el || !box) return;
+    // Scroll ONLY the lyrics box — scrollIntoView would also scroll every
+    // ancestor including the page, yanking the reader back to the card.
+    const delta = el.getBoundingClientRect().top - box.getBoundingClientRect().top;
+    box.scrollTo({
+      top: box.scrollTop + delta - box.clientHeight / 2 + el.clientHeight / 2,
+      behavior: "smooth",
+    });
   }, [activeIndex, activeGap, focus]);
 
   return (
@@ -227,6 +237,7 @@ export function LyricsView({
         className={`klr-card kf-lyrics relative overflow-hidden${fill ? " lg:min-h-0 lg:flex-1" : ""}${focus ? " focus-mode" : ""}`}
       >
         <div
+          ref={linesRef}
           className={`kf-lines overflow-y-auto py-4 ${fill ? "max-h-96 lg:h-full lg:max-h-none" : "max-h-96"}`}
           style={{ opacity: 1 - 0.78 * countinOpacity }}
         >
