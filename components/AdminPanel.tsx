@@ -131,7 +131,6 @@ function DiffColumn({
 
 export function AdminPanel() {
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [token, setToken] = useState("");
   const [items, setItems] = useState<PendingItem[] | null>(null);
   const [comments, setComments] = useState<AdminComment[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -178,22 +177,6 @@ export function AdminPanel() {
   useEffect(() => {
     load();
   }, [load]);
-
-  async function login(e: React.FormEvent) {
-    e.preventDefault();
-    setMessage(null);
-    const res = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-    if (res.ok) {
-      setToken("");
-      load();
-    } else {
-      setMessage("Invalid token");
-    }
-  }
 
   async function moderate(revisionId: number, action: "approve" | "reject" | "revert") {
     setMessage(null);
@@ -253,20 +236,17 @@ export function AdminPanel() {
     return <p className="text-sm text-[color:var(--color-text-dim)]">Loading…</p>;
   }
 
+  // The page gates on admin status too; this covers a session expiring while
+  // the panel is open.
   if (!authed) {
     return (
-      <div className="max-w-sm space-y-2">
-        <form onSubmit={login} className="flex gap-2">
-          <input
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder="Admin token"
-            className="field flex-1"
-          />
-          <button className="btn btn-primary btn-sm">Unlock</button>
-        </form>
-        {message && <p className="text-sm text-red-400">{message}</p>}
+      <div className="max-w-sm space-y-3">
+        <p className="text-sm text-[color:var(--color-text-muted)]">
+          Your session ended or your account no longer has moderator access.
+        </p>
+        <a href="/login?next=/admin" className="btn btn-secondary btn-sm">
+          Sign in again
+        </a>
       </div>
     );
   }

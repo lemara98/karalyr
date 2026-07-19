@@ -41,7 +41,7 @@ const VIEWS: Record<string, { statuses: SyncJobStatus[]; limit?: number; newestF
 };
 
 export async function GET(req: Request) {
-  if (!isAdminRequest(req)) return apiError(401, "Unauthorized", "Admin token required");
+  if (!(await isAdminRequest())) return apiError(401, "Unauthorized", "Admin access required");
 
   const status = new URL(req.url).searchParams.get("status") ?? "recent";
   const view = VIEWS[status] ?? VIEWS.recent;

@@ -73,7 +73,7 @@ Anonymous feedback (`signals`) drives quality:
   offset** applied to every timestamp.
 - Edits targeting a track whose best revision is `verified` enter
   `pending_review` and only go live via the moderation queue at `/admin`
-  (gated by `ADMIN_TOKEN`).
+  (gated by a signed-in admin account — `ADMIN_EMAILS` or `app_admins`).
 
 ### Abuse control without accounts
 

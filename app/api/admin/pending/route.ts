@@ -6,7 +6,7 @@ import { apiError } from "@/lib/api-helpers";
 import { validatePayload } from "@/lib/formats";
 
 export async function GET(req: Request) {
-  if (!isAdminRequest(req)) return apiError(401, "Unauthorized", "Admin token required");
+  if (!(await isAdminRequest())) return apiError(401, "Unauthorized", "Admin access required");
 
   const db = getDb();
   const pending = await db

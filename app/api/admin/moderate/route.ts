@@ -12,7 +12,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  if (!isAdminRequest(req)) return apiError(401, "Unauthorized", "Admin token required");
+  if (!(await isAdminRequest())) return apiError(401, "Unauthorized", "Admin access required");
 
   let body: z.infer<typeof bodySchema>;
   try {

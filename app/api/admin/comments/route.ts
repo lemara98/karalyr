@@ -5,7 +5,7 @@ import { isAdminRequest } from "@/lib/admin";
 import { apiError } from "@/lib/api-helpers";
 
 export async function GET(req: Request) {
-  if (!isAdminRequest(req)) return apiError(401, "Unauthorized", "Admin token required");
+  if (!(await isAdminRequest())) return apiError(401, "Unauthorized", "Admin access required");
 
   const rows = await listRecentLyricComments(getDb(), 100);
   return Response.json({
@@ -31,7 +31,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  if (!isAdminRequest(req)) return apiError(401, "Unauthorized", "Admin token required");
+  if (!(await isAdminRequest())) return apiError(401, "Unauthorized", "Admin access required");
 
   let body: z.infer<typeof bodySchema>;
   try {
