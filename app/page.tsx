@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { countDistinct, count, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
+import { listMostUsedTracks } from "@/lib/db/queries";
 import { revisions, tracks } from "@/lib/db/schema";
 import { KaralyrMark } from "@/components/KaralyrMark";
 import { LyricsDemo } from "@/components/LyricsDemo";
 import { SearchBox } from "@/components/SearchBox";
+import { TierBadge } from "@/components/TierBadge";
+import { WordSyncBadge } from "@/components/WordSyncBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +87,7 @@ const STEPS = [
 
 export default async function HomePage() {
   const db = getDb();
-  const [[trackStats], [revisionStats], [lyricsStats]] = await Promise.all([
+  const [[trackStats], [revisionStats], [lyricsStats], mostUsed] = await Promise.all([
     db.select({ n: count() }).from(tracks),
     db
       .select({
@@ -94,6 +97,7 @@ export default async function HomePage() {
       .from(revisions)
       .where(sql`${revisions.submitterFingerprint} NOT LIKE 'system:%'`),
     db.select({ n: count() }).from(tracks).where(isNotNull(tracks.bestRevisionId)),
+    listMostUsedTracks(db),
   ]);
 
   return (
@@ -164,6 +168,48 @@ export default async function HomePage() {
             {lyricsStats.n === 1 ? "song has" : "songs have"} karaoke lyrics ready to sing.
           </p>
           <SearchBox />
+
+          {mostUsed.length > 0 && (
+            <div className="mt-12">
+              <p className="klr-eyebrow !text-[11px]">MOST SUNG</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {mostUsed.map((t) => (
+                  <Link
+                    key={t.id}
+                    href={`/track/${t.id}`}
+                    className="klr-card group flex flex-col gap-3 p-4 transition-colors hover:border-white/15"
+                  >
+                    <div className="min-w-0">
+                      <p
+                        className="truncate font-medium transition-colors group-hover:text-[color:var(--klr-hi)]"
+                        title={t.trackName}
+                      >
+                        {t.trackName}
+                      </p>
+                      <p
+                        className="mt-0.5 truncate text-sm text-[color:var(--color-text-muted)]"
+                        title={t.artistName}
+                      >
+                        {t.artistName}
+                      </p>
+                    </div>
+                    <div className="mt-auto flex flex-wrap items-center gap-2">
+                      <TierBadge tier={t.bestTier} />
+                      {t.bestHasWordTiming && <WordSyncBadge />}
+                      <span
+                        className="ml-auto text-[11px] text-[color:var(--color-text-dim)]"
+                        style={{ fontFamily: "var(--font-mono)" }}
+                      >
+                        {t.singers > 0
+                          ? `${t.singers} ${t.singers === 1 ? "singer" : "singers"}`
+                          : "new"}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

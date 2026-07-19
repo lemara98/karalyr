@@ -208,6 +208,69 @@ export async function listRevisions(db: Db, trackId: number): Promise<Revision[]
     .orderBy(desc(revisions.createdAt), desc(revisions.id));
 }
 
+export interface MostUsedTrack extends Track {
+  bestTier: Tier | null;
+  bestHasWordTiming: boolean;
+  /** Distinct people who signaled, listen-alonged, or commented on the track. */
+  singers: number;
+}
+
+/**
+ * Tracks with karaoke lyrics, ranked by how much they are actually used —
+ * derived from the usage data we already store rather than a play counter:
+ * every vote/report signal, listen-along line observation, and lyric comment
+ * counts its author once (distinct fingerprints / user ids; system
+ * fingerprints excluded). Ties break by raw event volume, then newest track,
+ * so a fresh library still renders a sensible list.
+ */
+export async function listMostUsedTracks(db: Db, limit = 8): Promise<MostUsedTrack[]> {
+  const rows = await db.all<{
+    id: number;
+    artist_name: string;
+    track_name: string;
+    album_name: string | null;
+    duration_seconds: number;
+    best_revision_id: number | null;
+    created_at: number;
+    best_tier: Tier | null;
+    best_has_words: number | null;
+    singers: number;
+  }>(sql`
+    WITH usage_events AS (
+      SELECT r.track_id AS track_id, s.fingerprint AS who
+      FROM signals s
+      JOIN revisions r ON r.id = s.revision_id
+      UNION ALL
+      SELECT o.track_id, o.fingerprint FROM line_observations o
+      UNION ALL
+      SELECT c.track_id, 'user:' || c.author_user_id FROM lyric_comments c
+    )
+    SELECT t.*, r.tier AS best_tier,
+      json_extract(r.payload, '$.meta.has_word_timing') AS best_has_words,
+      COUNT(DISTINCT u.who) AS singers,
+      COUNT(u.who) AS events
+    FROM tracks t
+    JOIN revisions r ON r.id = t.best_revision_id
+    LEFT JOIN usage_events u ON u.track_id = t.id AND u.who NOT LIKE 'system:%'
+    GROUP BY t.id
+    ORDER BY singers DESC, events DESC, t.created_at DESC, t.id DESC
+    LIMIT ${limit}
+  `);
+
+  return rows.map((r) => ({
+    id: r.id,
+    artistName: r.artist_name,
+    trackName: r.track_name,
+    albumName: r.album_name,
+    durationSeconds: r.duration_seconds,
+    bestRevisionId: r.best_revision_id,
+    createdAt: r.created_at,
+    bestTier: r.best_tier,
+    bestHasWordTiming: r.best_has_words === 1,
+    singers: r.singers,
+  }));
+}
+
 export interface NewLyricCommentInput {
   trackId: number;
   revisionId: number;
