@@ -7,6 +7,7 @@ export * from "./types";
 export { parseLrc, serializeLrc, formatTimestamp, parseTimestampMs } from "./lrc";
 export { parseEnhancedLrc, serializeEnhancedLrc } from "./enhanced-lrc";
 export { parseUltraStar } from "./ultrastar";
+export { stripToPlainLines } from "./plain";
 
 export type ImportFormat = "lrc" | "enhanced_lrc" | "ultrastar";
 
