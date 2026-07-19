@@ -6,7 +6,7 @@
       "idx": 0,
       "version": "6",
       "when": 1783856394916,
-      "tag": "0000_gorgeous_shriek",
+      "tag": "0000_initial_schema",
       "breakpoints": true
     },
     {
@@ -34,21 +34,21 @@
       "idx": 4,
       "version": "6",
       "when": 1784119088395,
-      "tag": "0004_peaceful_scarlet_spider",
+      "tag": "0004_lyric_comments",
       "breakpoints": true
     },
     {
       "idx": 5,
       "version": "6",
       "when": 1784148950299,
-      "tag": "0005_white_ultragirl",
+      "tag": "0005_signal_report_fields",
       "breakpoints": true
     },
     {
       "idx": 6,
       "version": "6",
       "when": 1784288965956,
-      "tag": "0006_dark_shinobi_shaw",
+      "tag": "0006_sync_jobs",
       "breakpoints": true
     }
   ]
