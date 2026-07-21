@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Karalyr capture worker (local)",
+  "version": "0.1.0",
+  "description": "Operator tool: records a song as it plays in a tab and hands the audio to the local Karalyr aligner. Not for publishing.",
+  "minimum_chrome_version": "116",
+  "permissions": ["tabCapture", "offscreen", "nativeMessaging", "tabs", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_title": "Karalyr capture worker",
+    "default_popup": "popup.html"
+  }
+}

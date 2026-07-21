@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Karalyr capture</title>
+    <style>
+      :root {
+        --bg: #0b0e1a;
+        --panel: #12152a;
+        --text: #f1efff;
+        --muted: #9095b3;
+        --dim: #6b7294;
+        --a: #b46cff;
+        --b: #ff6b9d;
+        color-scheme: dark;
+      }
+      body {
+        width: 360px;
+        margin: 0;
+        padding: 14px;
+        background: var(--bg);
+        color: var(--text);
+        font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+      }
+      h1 {
+        margin: 0 0 2px;
+        font-size: 14px;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        margin: 0 0 12px;
+        color: var(--dim);
+        font-size: 11px;
+      }
+      .phase {
+        display: inline-block;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        padding: 2px 9px;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .phase.busy {
+        color: var(--b);
+        border-color: rgba(255, 107, 157, 0.45);
+      }
+      .job {
+        margin: 10px 0;
+        padding: 9px 10px;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+      }
+      .job b {
+        font-weight: 600;
+      }
+      .job span {
+        color: var(--muted);
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        margin: 12px 0 10px;
+      }
+      button {
+        flex: 1;
+        border: none;
+        border-radius: 999px;
+        padding: 8px 14px;
+        font: inherit;
+        font-weight: 500;
+        color: #fff;
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--a), var(--b));
+      }
+      button.secondary {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: var(--text);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      pre {
+        margin: 0;
+        max-height: 220px;
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 8px 9px;
+        font-size: 11px;
+        line-height: 1.45;
+        color: var(--muted);
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Karalyr capture worker</h1>
+    <p class="sub">Records a song as it plays, then aligns it locally.</p>
+
+    <span id="phase" class="phase">idle</span>
+    <div id="job" class="job" hidden></div>
+
+    <div class="row">
+      <button id="start">Align next song</button>
+      <button id="stop" class="secondary" disabled>Stop</button>
+    </div>
+
+    <pre id="log">Ready.</pre>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
