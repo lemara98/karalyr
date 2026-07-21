@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { countDistinct, count, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { listMostUsedTracks } from "@/lib/db/queries";
+import { listMostUsedTracks, listMostWantedSongs } from "@/lib/db/queries";
 import { revisions, tracks } from "@/lib/db/schema";
 import { KaralyrMark } from "@/components/KaralyrMark";
 import { LyricsDemo } from "@/components/LyricsDemo";
 import { SearchBox } from "@/components/SearchBox";
 import { TierBadge } from "@/components/TierBadge";
+import { WantedList } from "@/components/WantedList";
 import { WordSyncBadge } from "@/components/WordSyncBadge";
 
 export const dynamic = "force-dynamic";
@@ -87,7 +88,7 @@ const STEPS = [
 
 export default async function HomePage() {
   const db = getDb();
-  const [[trackStats], [revisionStats], [lyricsStats], mostUsed] = await Promise.all([
+  const [[trackStats], [revisionStats], [lyricsStats], mostUsed, mostWanted] = await Promise.all([
     db.select({ n: count() }).from(tracks),
     db
       .select({
@@ -98,6 +99,7 @@ export default async function HomePage() {
       .where(sql`${revisions.submitterFingerprint} NOT LIKE 'system:%'`),
     db.select({ n: count() }).from(tracks).where(isNotNull(tracks.bestRevisionId)),
     listMostUsedTracks(db),
+    listMostWantedSongs(db, 10),
   ]);
 
   return (
@@ -208,6 +210,26 @@ export default async function HomePage() {
                   </Link>
                 ))}
               </div>
+            </div>
+          )}
+
+          {mostWanted.length > 0 && (
+            <div className="mt-12">
+              <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <p className="klr-eyebrow !text-[11px]">MOST WANTED</p>
+                  <p className="mt-1.5 text-sm text-[color:var(--color-text-muted)]">
+                    Songs people are waiting on. Play one with Karafilt and you help time it.
+                  </p>
+                </div>
+                <Link
+                  href="/queue"
+                  className="text-sm text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
+                >
+                  The whole queue →
+                </Link>
+              </div>
+              <WantedList songs={mostWanted} />
             </div>
           )}
         </div>

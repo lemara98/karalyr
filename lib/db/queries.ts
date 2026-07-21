@@ -323,3 +323,101 @@ export async function deleteLyricComment(db: Db, id: number): Promise<boolean> {
     .returning({ id: lyricComments.id });
   return deleted.length > 0;
 }
+
+export interface WantedSong {
+  jobId: number;
+  artistName: string;
+  trackName: string;
+  albumName: string | null;
+  /** Distinct people who asked for it. */
+  voters: number;
+  /** Best link anyone offered, for tracing the song back to where it plays. */
+  videoUrl: string | null;
+  videoKey: string | null;
+  /** Set when the song is already in the library, just without word timing. */
+  trackId: number | null;
+  createdAt: number;
+}
+
+/**
+ * The most-wanted songs: open requests ranked by how many distinct people
+ * asked, oldest first on a tie so a long-standing request isn't buried by a
+ * newer one with equal demand.
+ *
+ * Songs that have since been word-synced are excluded defensively — closing
+ * them is resolveWantedForTrack's job, but a request that arrived while a
+ * revision was mid-flight shouldn't show up here in the meantime.
+ */
+export async function listMostWantedSongs(db: Db, limit = 10): Promise<WantedSong[]> {
+  const rows = await db.all<{
+    job_id: number;
+    artist_name: string;
+    track_name: string;
+    album_name: string | null;
+    voters: number;
+    video_url: string | null;
+    video_key: string | null;
+    track_id: number | null;
+    created_at: number;
+  }>(sql`
+    SELECT j.id AS job_id, j.artist_name, j.track_name, j.album_name,
+      j.video_url, j.video_key, j.created_at,
+      COUNT(DISTINCT v.user_id) AS voters,
+      (SELECT tv.track_id FROM track_videos tv WHERE tv.video_key = j.video_key LIMIT 1) AS track_id
+    FROM sync_jobs j
+    LEFT JOIN sync_job_votes v ON v.job_id = j.id
+    WHERE j.status IN ('wanted', 'pending_approval', 'queued', 'processing')
+      AND NOT EXISTS (
+        SELECT 1 FROM track_videos tv
+        JOIN revisions r ON r.track_id = tv.track_id
+        WHERE tv.video_key = j.video_key
+          AND r.status IN ('active', 'pending_review')
+          AND json_extract(r.payload, '$.meta.has_word_timing') = 1
+      )
+    GROUP BY j.id
+    ORDER BY voters DESC, j.created_at ASC, j.id ASC
+    LIMIT ${limit}
+  `);
+
+  return rows.map((r) => ({
+    jobId: r.job_id,
+    artistName: r.artist_name,
+    trackName: r.track_name,
+    albumName: r.album_name,
+    voters: r.voters,
+    videoUrl: r.video_url,
+    videoKey: r.video_key,
+    trackId: r.track_id,
+    createdAt: r.created_at,
+  }));
+}
+
+/** Distinct people who asked for one request. */
+export async function countJobVoters(db: Db, jobId: number): Promise<number> {
+  const [row] = await db.all<{ n: number }>(
+    sql`SELECT COUNT(DISTINCT user_id) AS n FROM sync_job_votes WHERE job_id = ${jobId}`
+  );
+  return row?.n ?? 0;
+}
+
+/**
+ * Every source anyone offered for one request, newest first. Dedup collapses on
+ * song identity, so this is where the second and third link for a song live —
+ * the operator picks which one to actually work from.
+ */
+export async function listWantedSources(
+  db: Db,
+  jobId: number
+): Promise<{ videoKey: string; videoUrl: string; createdAt: number }[]> {
+  const rows = await db.all<{ video_key: string; video_url: string; created_at: number }>(sql`
+    SELECT video_key, video_url, created_at
+    FROM sync_job_votes
+    WHERE job_id = ${jobId} AND video_key IS NOT NULL AND video_url IS NOT NULL
+    ORDER BY created_at DESC, id DESC
+  `);
+  return rows.map((r) => ({
+    videoKey: r.video_key,
+    videoUrl: r.video_url,
+    createdAt: r.created_at,
+  }));
+}

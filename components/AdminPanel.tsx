@@ -19,12 +19,22 @@ interface AdminComment {
   created_at: number;
 }
 
+interface SyncSource {
+  videoKey: string;
+  videoUrl: string;
+  createdAt: number;
+}
+
 interface SyncJob {
   id: number;
   source: "extension" | "website";
   status: string;
-  video_key: string;
-  video_url: string;
+  video_key: string | null;
+  video_url: string | null;
+  /** Distinct people who asked for this song. */
+  voters: number;
+  /** Every link anyone offered, not just the display one. */
+  sources: SyncSource[];
   artist_name: string;
   track_name: string;
   album_name: string | null;
@@ -135,22 +145,22 @@ export function AdminPanel() {
   const [comments, setComments] = useState<AdminComment[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [revertId, setRevertId] = useState("");
-  const [syncPending, setSyncPending] = useState<SyncJob[] | null>(null);
+  const [syncWanted, setSyncWanted] = useState<SyncJob[] | null>(null);
   const [syncActive, setSyncActive] = useState<SyncJob[] | null>(null);
   const [syncRecent, setSyncRecent] = useState<SyncJob[] | null>(null);
   const [rejectTarget, setRejectTarget] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
   const loadSync = useCallback(async () => {
-    const [pending, active, recent] = await Promise.all(
-      (["pending", "active", "recent"] as const).map(async (status) => {
+    const [wantedJobs, active, recent] = await Promise.all(
+      (["wanted", "active", "recent"] as const).map(async (status) => {
         const res = await fetch(`/api/admin/sync-queue?status=${status}`).catch(() => null);
         if (!res?.ok) return null;
         const body = await res.json().catch(() => ({}));
         return (body.jobs ?? null) as SyncJob[] | null;
       })
     );
-    setSyncPending(pending);
+    setSyncWanted(wantedJobs);
     setSyncActive(active);
     setSyncRecent(recent);
   }, []);
@@ -196,7 +206,7 @@ export function AdminPanel() {
 
   async function moderateSync(
     jobId: number,
-    action: "approve" | "reject" | "cancel" | "retry",
+    action: "promote" | "approve" | "reject" | "cancel" | "retry",
     reason?: string
   ) {
     setMessage(null);
@@ -315,10 +325,10 @@ export function AdminPanel() {
       <section>
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <h2 className="text-lg font-semibold">
-            Sync queue{" "}
-            {syncPending && (
+            Wanted songs{" "}
+            {syncWanted && (
               <span className="text-[color:var(--color-text-dim)]">
-                ({syncPending.length} awaiting approval)
+                ({syncWanted.length} requested)
               </span>
             )}
           </h2>
@@ -327,13 +337,16 @@ export function AdminPanel() {
           </button>
         </div>
 
-        {syncPending?.length === 0 && (
-          <p className="text-sm text-[color:var(--color-text-dim)]">
-            No sync requests awaiting approval.
-          </p>
+        <p className="mb-3 max-w-2xl text-sm text-[color:var(--color-text-dim)]">
+          Demand only — nothing here is work yet. Promoting a song queues it for the aligner,
+          so only promote once you have a lawful way to get its audio.
+        </p>
+
+        {syncWanted?.length === 0 && (
+          <p className="text-sm text-[color:var(--color-text-dim)]">No songs requested.</p>
         )}
         <div className="space-y-4">
-          {syncPending?.map((j) => (
+          {syncWanted?.map((j) => (
             <div key={j.id} className="klr-card p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -344,7 +357,8 @@ export function AdminPanel() {
                     {j.source}
                   </span>
                   <span className="ml-2 text-sm text-[color:var(--color-text-dim)]">
-                    job #{j.id} ·{" "}
+                    job #{j.id} · {j.voters} {j.voters === 1 ? "want" : "wants"} · first asked
+                    by{" "}
                     {j.submitter_name ??
                       (j.submitter_user_id ? (
                         <span style={{ fontFamily: "var(--font-mono)" }}>
@@ -355,6 +369,24 @@ export function AdminPanel() {
                       ))}{" "}
                     · {new Date(j.created_at).toLocaleString()}
                   </span>
+                  {j.sources.length > 0 && (
+                    <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                      <span className="text-[color:var(--color-text-dim)]">Sources:</span>
+                      {j.sources.map((s) => (
+                        <a
+                          key={s.videoKey}
+                          href={s.videoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
+                          style={{ fontFamily: "var(--font-mono)" }}
+                          title={s.videoUrl}
+                        >
+                          {s.videoKey} ↗
+                        </a>
+                      ))}
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {rejectTarget === j.id ? (
@@ -390,9 +422,10 @@ export function AdminPanel() {
                     <>
                       <button
                         className="btn btn-primary btn-sm"
-                        onClick={() => moderateSync(j.id, "approve")}
+                        onClick={() => moderateSync(j.id, "promote")}
+                        title="Queue this for the aligner"
                       >
-                        Approve
+                        Promote to queue
                       </button>
                       <button
                         className="btn btn-secondary btn-sm !text-red-300"
@@ -408,14 +441,20 @@ export function AdminPanel() {
                 </div>
               </div>
               <p className="truncate text-xs">
-                <a
-                  href={j.video_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[color:var(--klr-b)] hover:underline"
-                >
-                  {j.video_url}
-                </a>
+                {j.video_url ? (
+                  <a
+                    href={j.video_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[color:var(--klr-b)] hover:underline"
+                  >
+                    {j.video_url}
+                  </a>
+                ) : (
+                  <span className="text-[color:var(--color-text-dim)]">
+                    No link — asked for by artist and title
+                  </span>
+                )}
               </p>
               <details className="mt-2 text-xs">
                 <summary className="cursor-pointer text-[color:var(--color-text-dim)]">
