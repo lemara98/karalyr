@@ -1,25 +1,32 @@
 #!/usr/bin/env python3
-"""Karalyr queue worker: pull word-sync jobs from the hosted app, run align.py.
+"""Karalyr queue worker: align a queued word-sync job from audio you supply.
 
-Polls the karalyr server over HTTPS, claims one job at a time, runs the
-offline aligner (worker/align.py) as a subprocess, and posts the resulting
-payload back. Meant to run as a user systemd service on a spare machine —
-see worker/README.md ("Queue worker daemon"). Stdlib only, Python 3.10+.
+Claims one job from the hosted app, runs the offline aligner (worker/align.py)
+against an audio file YOU point it at, and posts the resulting payload back.
+Stdlib only, Python 3.10+.
+
+This worker does not fetch audio. It used to pass --youtube to the aligner,
+which made yt-dlp download the track; that path is gone, so promoting a song
+in /admin can never cause a download. Get the audio one of two ways:
+
+  * you already own the file    -> this script, with --audio
+  * capture it while it plays   -> capture-extension/ + worker/capture_host.py
 
 Environment:
   KARALYR_URL          base URL of the karalyr app, no trailing slash (required)
   WORKER_TOKEN         shared bearer token, must match the server (required)
   WORKER_ID            name reported to the server (default: hostname)
-  POLL_SECONDS         idle poll interval (default 30)
   LEASE_SECONDS        job lease requested on claim/heartbeat (default 2700)
   HEARTBEAT_SECONDS    heartbeat interval while a job runs (default 300)
   JOB_TIMEOUT_SECONDS  kill the aligner after this long (default 2400)
   PYTHON_BIN           python that runs the aligner (default worker/.venv/bin/python)
   ALIGN_SCRIPT         aligner script path (default worker/align.py)
 
-Flags:
-  --once  claim and process at most one job, then exit. Exits 0 whether or
-          not a job was found; exits 1 if the server was unreachable.
+Usage:
+  queue_worker.py --audio PATH   claim the oldest queued job and align it from
+                                 PATH. Promote exactly the song you have audio
+                                 for, then run this. Exits 0 when there was
+                                 nothing queued, 1 if the server was unreachable.
 """
 
 import argparse
@@ -41,7 +48,6 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 KARALYR_URL = os.environ.get("KARALYR_URL", "").rstrip("/")
 WORKER_TOKEN = os.environ.get("WORKER_TOKEN", "")
 WORKER_ID = os.environ.get("WORKER_ID") or socket.gethostname()
-POLL_SECONDS = int(os.environ.get("POLL_SECONDS") or 30)
 LEASE_SECONDS = int(os.environ.get("LEASE_SECONDS") or 2700)
 HEARTBEAT_SECONDS = int(os.environ.get("HEARTBEAT_SECONDS") or 300)
 JOB_TIMEOUT_SECONDS = int(os.environ.get("JOB_TIMEOUT_SECONDS") or 2400)
@@ -168,7 +174,7 @@ def watch_child(proc, stop, deadline, timed_out):
         time.sleep(1)
 
 
-def run_job(job):
+def run_job(job, audio_path):
     global CURRENT_CHILD
     job_id = job["id"]
     stop = threading.Event()
@@ -183,7 +189,7 @@ def run_job(job):
         try:
             try:
                 proc = subprocess.Popen(
-                    [PYTHON_BIN, ALIGN_SCRIPT, "--youtube", job["video_url"],
+                    [PYTHON_BIN, ALIGN_SCRIPT, "--audio", str(audio_path),
                      "--lyrics", str(lyrics_path), "--out", str(out_path)],
                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                     start_new_session=True,  # own group so kill_child reaps demucs too
@@ -274,69 +280,59 @@ def handle_signal(signum, _frame):
         kill_child(proc)
 
 
-def sleep_backoff():
-    SHUTDOWN.wait(min(POLL_SECONDS * 4, 300))
-
-
 def main():
     ap = argparse.ArgumentParser(
-        description="Karalyr pull worker: claim word-sync jobs and run the aligner"
+        description="Karalyr worker: claim the oldest queued job and align it from your audio"
     )
-    ap.add_argument("--once", action="store_true", help="process at most one job, then exit")
+    ap.add_argument(
+        "--audio",
+        type=pathlib.Path,
+        required=True,
+        help="audio file you possess for the song you promoted",
+    )
     args = ap.parse_args()
 
     if not KARALYR_URL:
         sys.exit("[worker] KARALYR_URL is required (e.g. https://karalyr.example.com)")
     if not WORKER_TOKEN:
         sys.exit("[worker] WORKER_TOKEN is required")
+    if not args.audio.exists():
+        sys.exit(f"[worker] audio file not found: {args.audio}")
 
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
-    log(f"worker '{WORKER_ID}' polling {KARALYR_URL} (every {POLL_SECONDS}s, lease {LEASE_SECONDS}s)")
+    log(f"worker '{WORKER_ID}' claiming one job from {KARALYR_URL}")
 
-    while not SHUTDOWN.is_set():
-        try:
-            status, data = api_post(
-                "/api/worker/claim",
-                {"worker_id": WORKER_ID, "lease_seconds": LEASE_SECONDS},
-            )
-        except NETWORK_ERRORS as err:
-            log(f"claim failed (server unreachable?): {err}")
-            if args.once:
-                sys.exit(1)
-            sleep_backoff()
-            continue
-
-        if status == 401:
-            log("server rejected WORKER_TOKEN (401) — fix the env file; not retrying")
-            sys.exit(1)
-        if status not in (200, 204):
-            log(f"unexpected /claim status {status} — backing off")
-            if args.once:
-                sys.exit(1)
-            sleep_backoff()
-            continue
-        if status == 204 or not isinstance(data, dict) or not data.get("job"):
-            if args.once:
-                log("no job available")
-                return
-            SHUTDOWN.wait(POLL_SECONDS)
-            continue
-
-        job = data["job"]
-        log(
-            f"claimed job #{job['id']}: {job.get('artist_name')} — {job.get('track_name')} "
-            f"(attempt {job.get('attempts')}/{job.get('max_attempts')})"
+    try:
+        status, data = api_post(
+            "/api/worker/claim",
+            {"worker_id": WORKER_ID, "lease_seconds": LEASE_SECONDS},
         )
-        try:
-            run_job(job)
-        except NETWORK_ERRORS as err:
-            log(f"network error while reporting job #{job['id']}: {err}")
-            if args.once:
-                sys.exit(1)
-            sleep_backoff()
-        if args.once:
-            return
+    except NETWORK_ERRORS as err:
+        log(f"claim failed (server unreachable?): {err}")
+        sys.exit(1)
+
+    if status == 401:
+        log("server rejected WORKER_TOKEN (401) — fix the env file")
+        sys.exit(1)
+    if status not in (200, 204):
+        log(f"unexpected /claim status {status}")
+        sys.exit(1)
+    if status == 204 or not isinstance(data, dict) or not data.get("job"):
+        log("nothing queued — promote a song in /admin first")
+        return
+
+    job = data["job"]
+    log(
+        f"claimed job #{job['id']}: {job.get('artist_name')} — {job.get('track_name')} "
+        f"(attempt {job.get('attempts')}/{job.get('max_attempts')})"
+    )
+    log(f"aligning from {args.audio}")
+    try:
+        run_job(job, args.audio)
+    except NETWORK_ERRORS as err:
+        log(f"network error while reporting job #{job['id']}: {err}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

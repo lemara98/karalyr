@@ -48,17 +48,26 @@ community submissions and signals still outrank/refine it as usual.
 Non-Latin/diacritic lyrics (č, ž, đ, ...) are transliterated internally for
 the aligner; the stored payload keeps the original spelling.
 
-## Queue worker daemon
+## Fulfilling a queue request
 
-`worker/queue_worker.py` turns this machine into a pull-worker for the hosted
-word-sync queue: it polls the karalyr app over HTTPS, claims one job at a
-time, runs `align.py` on it, and posts the resulting payload back. The daemon
-itself is pure Python stdlib — the venv from the one-time setup above (plus
-`yt-dlp`) is all it needs. `worker/requirements.txt` mirrors those setup
-commands if you prefer `pip install -r` (torch/torchaudio still come from the
-CPU wheel index — see the comment in that file).
+Requests on `/queue` are demand only — nothing is worked on until you promote a
+song in `/admin`. **Nothing here downloads audio**: `queue_worker.py` used to
+pass `--youtube` to the aligner and no longer does, so promoting a song can
+never trigger a fetch. Two ways to supply the audio.
 
-Config lives in an env file:
+### You already own the file
+
+```bash
+KARALYR_URL=https://karalyr.example.com WORKER_TOKEN=the-shared-secret \
+  worker/.venv/bin/python worker/queue_worker.py --audio ~/Music/song.mp3
+```
+
+Claims the oldest queued job and aligns it from that file, streaming the
+`[align]` log and finishing with `complete — revision #...`. Exits 0 when
+nothing was queued, 1 if the server was unreachable. Promote exactly the song
+you have audio for — the claim takes whatever is oldest.
+
+Config can live in an env file instead of the command line:
 
 ```bash
 # ~/.config/karalyr-worker.env
@@ -66,52 +75,25 @@ KARALYR_URL=https://karalyr.example.com
 WORKER_TOKEN=the-shared-secret-from-the-server
 ```
 
-Install as a user systemd unit so it survives reboots and needs no login
-session:
-
-```bash
-cp worker/karalyr-worker.service ~/.config/systemd/user/
-# edit the copy if this repo doesn't live at
-# /home/milanknezevic/Desktop/karaoke/karalyr — ExecStart wants absolute
-# paths to the venv python and queue_worker.py
-systemctl --user daemon-reload
-systemctl --user enable --now karalyr-worker
-loginctl enable-linger $USER   # keep it running after you log out
-```
-
-Follow the logs:
-
-```bash
-journalctl --user -u karalyr-worker -f
-```
-
 Tunables (env vars, defaults in the `queue_worker.py` docstring): `WORKER_ID`
-(hostname), `POLL_SECONDS` (30), `LEASE_SECONDS` (2700), `HEARTBEAT_SECONDS`
-(300), `JOB_TIMEOUT_SECONDS` (2400). For testing without burning 10 minutes
-of CPU per run, `PYTHON_BIN` and `ALIGN_SCRIPT` point the daemon at any stub
-that honors align.py's CLI (`--youtube <url> --lyrics <path> --out <path>`)
-and writes a canned payload.
+(hostname), `LEASE_SECONDS` (2700), `HEARTBEAT_SECONDS` (300),
+`JOB_TIMEOUT_SECONDS` (2400). For testing without burning CPU, `PYTHON_BIN` and
+`ALIGN_SCRIPT` point it at any stub honouring `--audio <path> --lyrics <path>
+--out <path>` that writes a canned payload.
 
-### Manual E2E checklist
+### Capture it while it plays
 
-1. Run karalyr locally with the worker token set:
-   `WORKER_TOKEN=devsecret npm run dev`.
-2. Enqueue a word-sync job (request word sync on a track, or insert a queue
-   row directly).
-3. Run one worker cycle against the dev server:
+For a song you have no file for, [`../capture-extension/`](../capture-extension/README.md)
+records it from your own playback and feeds `align.py --audio` via
+`worker/capture_host.py` — same aligner, same result, no download. That README
+covers the whole setup.
 
-   ```bash
-   KARALYR_URL=http://localhost:3000 WORKER_TOKEN=devsecret \
-     python3 worker/queue_worker.py --once
-   ```
+### The systemd unit
 
-4. Watch it claim the job, stream the `[align]` log (tqdm progress spam is
-   filtered out), and finish with `complete — revision #...`.
-5. Open the track page: the lyrics play back word-synced (an `auto_aligned`
-   revision, same tier as a local import).
-
-`--once` exits 0 whether or not a job was waiting, and 1 if the server was
-unreachable — cron-friendly if you'd rather not run the daemon.
+`worker/karalyr-worker.service` predates both paths and assumed an unattended
+polling daemon. Fulfilment is operator-driven by design now — you decide per
+song — so there is nothing to run continuously. The unit is kept for reference
+only.
 
 ## Notes
 
