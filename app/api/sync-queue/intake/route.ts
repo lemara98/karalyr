@@ -12,7 +12,9 @@ const MAX_QUEUED_JOBS = 500;
 
 const bodySchema = z
   .object({
-    video_url: z.string().min(1).max(500),
+    // Optional: a want needs only an artist and a title. When present it is
+    // kept for tracing, per-voter, not as a promise to fetch anything.
+    video_url: z.string().max(500).nullish(),
     artist_name: z.string().min(1).max(500),
     track_name: z.string().min(1).max(500),
     album_name: z.string().max(500).nullish(),
@@ -41,10 +43,11 @@ export async function POST(req: Request) {
     return apiError(400, "BadRequest", message ?? "Invalid request body");
   }
 
-  // Reject non-YouTube sources before consuming the submitter's daily rate
-  // budget — auto-triggered clients must not pay for guaranteed rejections.
-  if (!deriveVideoKey(body.video_url)?.startsWith("yt:")) {
-    return apiError(400, "UnsupportedSource", "Only YouTube videos can be synced");
+  // A link is optional, but an unparseable one is rejected before it costs the
+  // submitter any of their daily budget — auto-triggered clients must not pay
+  // for a guaranteed rejection.
+  if (body.video_url && !deriveVideoKey(body.video_url)) {
+    return apiError(400, "UnsupportedSource", "That link isn't a recognised YouTube or Spotify URL");
   }
 
   const { allowed } = await checkRateLimit(
@@ -80,23 +83,25 @@ export async function POST(req: Request) {
           {
             code: 409,
             name: "AlreadySynced",
-            message: "This video already has word-synced lyrics",
+            message: "This song already has word-synced lyrics",
             track_id: result.trackId ?? null,
           },
           { status: 409 }
         );
-      case "AlreadyQueued":
-        return apiError(409, "AlreadyQueued", "A sync job for this video already exists");
       case "RecentlyFailed":
-        return apiError(409, "RecentlyFailed", "This video failed to sync recently; try again later");
+        return apiError(409, "RecentlyFailed", "This song failed to sync recently; try again later");
       case "UnsupportedSource":
-        return apiError(400, "UnsupportedSource", "Only YouTube videos can be synced");
+        return apiError(400, "UnsupportedSource", "That link isn't a recognised YouTube or Spotify URL");
       case "BadLyrics":
         return apiError(400, "BadLyrics", "Lyrics are too short or too long to align");
     }
   }
 
-  return json({ job_id: result.job.id, status: result.job.status }, { status: 201 });
+  // 200 for a vote on an existing request, 201 when this call opened it.
+  return json(
+    { job_id: result.job.id, status: result.job.status, voted: result.voted },
+    { status: result.voted ? 200 : 201 }
+  );
 }
 
 export const OPTIONS = corsOptions;

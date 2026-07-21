@@ -2,6 +2,7 @@ import { getDb } from "@/lib/db/client";
 import { type SyncJob, type SyncJobStatus } from "@/lib/db/schema";
 import { isAdminRequest } from "@/lib/admin";
 import { apiError, json } from "@/lib/api-helpers";
+import { countJobVoters, listWantedSources } from "@/lib/db/queries";
 import { listSyncJobs } from "@/lib/sync-queue/core";
 
 function jobDto(j: SyncJob) {
@@ -35,7 +36,9 @@ function jobDto(j: SyncJob) {
 }
 
 const VIEWS: Record<string, { statuses: SyncJobStatus[]; limit?: number; newestFirst: boolean }> = {
-  pending: { statuses: ["pending_approval"], newestFirst: false },
+  // Demand waiting on a decision: promote one once you have a lawful way to
+  // get its audio. pending_approval rides along for rows predating "wanted".
+  wanted: { statuses: ["wanted", "pending_approval"], newestFirst: false },
   active: { statuses: ["queued", "processing"], newestFirst: false },
   recent: { statuses: ["done", "failed", "rejected", "cancelled"], limit: 50, newestFirst: true },
 };
@@ -46,6 +49,18 @@ export async function GET(req: Request) {
   const status = new URL(req.url).searchParams.get("status") ?? "recent";
   const view = VIEWS[status] ?? VIEWS.recent;
 
-  const jobs = await listSyncJobs(getDb(), view);
-  return json({ jobs: jobs.map(jobDto) });
+  const db = getDb();
+  const jobs = await listSyncJobs(db, view);
+
+  // Demand and every link anyone offered. Dedup collapses on song identity, so
+  // the display link is only one of possibly several — the operator needs all
+  // of them to pick which recording to actually work from.
+  const enriched = await Promise.all(
+    jobs.map(async (j) => ({
+      ...jobDto(j),
+      voters: await countJobVoters(db, j.id),
+      sources: await listWantedSources(db, j.id),
+    }))
+  );
+  return json({ jobs: enriched });
 }

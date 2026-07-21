@@ -23,4 +23,6 @@ export const RATE_LIMITS = {
   comment: { limit: 10, windowMs: 60 * 60 * 1000 }, // 10 comments/hour/user (Supabase uid)
   syncQueueIntake: { limit: 20, windowMs: 24 * 60 * 60 * 1000 }, // 20 sync requests/day/user via the karafilt.com proxy
   syncQueueSubmit: { limit: 10, windowMs: 24 * 60 * 60 * 1000 }, // 10 sync requests/day/user on the website
+  // Backing an existing request is cheap — it adds no work, only demand.
+  syncQueueVote: { limit: 60, windowMs: 24 * 60 * 60 * 1000 },
 } as const;

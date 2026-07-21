@@ -2,20 +2,27 @@ import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import {
   SYNC_JOB_ACTIVE_STATUSES,
+  syncJobVotes,
   syncJobs,
+  tracks,
   type SyncJob,
   type SyncJobSource,
   type SyncJobStatus,
 } from "../db/schema";
 import { stripToPlainLines } from "../formats";
-import { deriveVideoKey } from "../video-key";
+import { songKey } from "../song-key";
+import { deriveVideoKey, pickPreferredVideoKey } from "../video-key";
 
 /**
- * State machine for the word-sync request queue (see the syncJobs table).
+ * State machine for the word-sync demand queue (see the syncJobs table).
  * Every transition is a guarded UPDATE — the WHERE re-checks the expected
  * status (and owner, for worker calls) so a stale actor gets `null` back
  * instead of clobbering someone else's transition. Nothing here holds a
  * transaction open: single-statement atomicity is all SQLite/Turso need.
+ *
+ * Intake records *demand*: a request lands as "wanted" and never as "queued",
+ * because "queued" is the only status the pull worker can claim. Promotion is
+ * an explicit admin action, so nothing a user does can trigger a fetch.
  */
 
 export const MIN_LYRIC_LINES = 4;
@@ -28,16 +35,23 @@ export const RETRY_BACKOFF_MS = 30 * 60 * 1000;
 export const RECLAIM_DELAY_MS = 10 * 60 * 1000;
 export const DEFAULT_LEASE_MS = 45 * 60 * 1000;
 
+// Note there is no "AlreadyQueued": a second request for a song someone has
+// already asked for is the point of a demand queue, so it records a vote and
+// succeeds.
 export type EnqueueRejection =
   | "AlreadySynced"
-  | "AlreadyQueued"
   | "RecentlyFailed"
   | "UnsupportedSource"
   | "BadLyrics";
 
 export interface EnqueueInput {
   source: SyncJobSource;
-  videoUrl: string;
+  /**
+   * Optional link to where the song can be heard. A want needs only an artist
+   * and a title; when a link is given it is kept for tracing (and per-voter on
+   * syncJobVotes), never as a promise that anything will fetch it.
+   */
+  videoUrl?: string | null;
   artistName: string;
   trackName: string;
   albumName?: string | null;
@@ -49,7 +63,7 @@ export interface EnqueueInput {
 }
 
 export type EnqueueResult =
-  | { ok: true; job: SyncJob }
+  | { ok: true; job: SyncJob; voted: boolean }
   | { ok: false; code: EnqueueRejection; trackId?: number };
 
 function isUniqueViolation(err: unknown): boolean {
@@ -66,9 +80,11 @@ export async function enqueueSyncJob(
   input: EnqueueInput,
   now = Date.now()
 ): Promise<EnqueueResult> {
-  const videoKey = deriveVideoKey(input.videoUrl);
-  // Only YouTube: the worker fetches audio with yt-dlp.
-  if (!videoKey?.startsWith("yt:")) return { ok: false, code: "UnsupportedSource" };
+  // A link is optional, but one that was supplied has to parse — quietly
+  // dropping a typo'd URL would throw away the only trace back to the song.
+  const videoUrl = input.videoUrl?.trim() || null;
+  const videoKey = videoUrl ? deriveVideoKey(videoUrl) : null;
+  if (videoUrl && !videoKey) return { ok: false, code: "UnsupportedSource" };
 
   const plainLyrics = stripToPlainLines(input.rawLyrics);
   if (
@@ -78,43 +94,32 @@ export async function enqueueSyncJob(
     return { ok: false, code: "BadLyrics" };
   }
 
-  // Layer 1: the video's track already has word-timed lyrics. Tier is
-  // deliberately not the test — a community *line*-synced revision can be the
-  // best one and the track still wants word sync. pending_review counts too:
-  // a queue import under a verified best revision lands there (Rule C), and
-  // without this the same video would be re-queued and re-aligned repeatedly
-  // while the revision waits for review.
-  const synced = await db.all<{ track_id: number }>(sql`
-    SELECT tv.track_id FROM track_videos tv
-    JOIN revisions r ON r.track_id = tv.track_id
-    WHERE tv.video_key = ${videoKey}
-      AND r.status IN ('active', 'pending_review')
-      AND json_extract(r.payload, '$.meta.has_word_timing') = 1
-    LIMIT 1
-  `);
-  if (synced.length > 0) {
-    return { ok: false, code: "AlreadySynced", trackId: synced[0].track_id };
+  const key = songKey(input.artistName, input.trackName);
+
+  // Layer 1: the song already has word-timed lyrics. Tier is deliberately not
+  // the test — a community *line*-synced revision can be the best one and the
+  // track still wants word sync. pending_review counts too: an import under a
+  // verified best revision lands there (Rule C), and without this the same
+  // song would be re-requested and re-aligned while it waits for review.
+  const syncedTrackId = await findSyncedTrack(db, key, videoKey);
+  if (syncedTrackId !== null) {
+    return { ok: false, code: "AlreadySynced", trackId: syncedTrackId };
   }
 
-  // Layer 2: a live job already holds this video's slot.
-  const [live] = await db
-    .select()
-    .from(syncJobs)
-    .where(
-      and(eq(syncJobs.videoKey, videoKey), inArray(syncJobs.status, SYNC_JOB_ACTIVE_STATUSES))
-    )
-    .limit(1);
-  if (live) return { ok: false, code: "AlreadyQueued" };
+  // Layer 2: someone already wants this song — record a vote on their request
+  // rather than opening a second one.
+  const live = await findLiveRequest(db, key);
+  if (live) return { ok: true, job: await addVote(db, live, input, videoKey, videoUrl, now), voted: true };
 
-  // Layer 3 (extension only): auto-triggered clients shouldn't hammer a video
-  // that just failed. Human-initiated website submissions may retry freely.
+  // Layer 3 (extension only): auto-triggered clients shouldn't re-file a song
+  // that just failed. Human-initiated website requests may retry freely.
   if (input.source === "extension") {
     const [failed] = await db
       .select({ id: syncJobs.id })
       .from(syncJobs)
       .where(
         and(
-          eq(syncJobs.videoKey, videoKey),
+          eq(syncJobs.songKey, key),
           eq(syncJobs.status, "failed"),
           gte(syncJobs.updatedAt, now - RECENT_FAILURE_COOLDOWN_MS)
         )
@@ -128,9 +133,11 @@ export async function enqueueSyncJob(
       .insert(syncJobs)
       .values({
         source: input.source,
-        status: input.source === "extension" ? "queued" : "pending_approval",
+        // Always "wanted": no public path may reach a worker-claimable status.
+        status: "wanted",
+        songKey: key,
         videoKey,
-        videoUrl: input.videoUrl.trim(),
+        videoUrl,
         artistName: input.artistName.trim(),
         trackName: input.trackName.trim(),
         albumName: input.albumName?.trim() || null,
@@ -142,12 +149,140 @@ export async function enqueueSyncJob(
         updatedAt: now,
       })
       .returning();
-    return { ok: true, job };
+    // The requester counts as the first voter, so demand is never zero.
+    await recordVote(db, job.id, input.submitterUserId, videoKey, videoUrl, now);
+    return { ok: true, job, voted: false };
   } catch (err) {
-    // Lost the read-then-insert race — the partial unique index caught it.
-    if (isUniqueViolation(err)) return { ok: false, code: "AlreadyQueued" };
+    // Lost the read-then-insert race — the partial unique index caught it, so
+    // the winner's request is the one to vote on.
+    if (isUniqueViolation(err)) {
+      const winner = await findLiveRequest(db, key);
+      if (winner) {
+        return { ok: true, job: await addVote(db, winner, input, videoKey, videoUrl, now), voted: true };
+      }
+    }
     throw err;
   }
+}
+
+function findLiveRequest(db: Db, key: string): Promise<SyncJob | undefined> {
+  return db
+    .select()
+    .from(syncJobs)
+    .where(and(eq(syncJobs.songKey, key), inArray(syncJobs.status, SYNC_JOB_ACTIVE_STATUSES)))
+    .limit(1)
+    .then((rows) => rows[0]);
+}
+
+/**
+ * Track id if this song already has word-timed lyrics, else null. Checked by
+ * video key first (exact and indexed), then by song identity so a want with no
+ * link — or with a link nobody has mapped yet — is still recognised.
+ */
+async function findSyncedTrack(
+  db: Db,
+  key: string,
+  videoKey: string | null
+): Promise<number | null> {
+  if (videoKey) {
+    const byVideo = await db.all<{ track_id: number }>(sql`
+      SELECT tv.track_id FROM track_videos tv
+      JOIN revisions r ON r.track_id = tv.track_id
+      WHERE tv.video_key = ${videoKey}
+        AND r.status IN ('active', 'pending_review')
+        AND json_extract(r.payload, '$.meta.has_word_timing') = 1
+      LIMIT 1
+    `);
+    if (byVideo.length > 0) return byVideo[0].track_id;
+  }
+
+  // Song identity has to be compared in JS (songKey folds diacritics and
+  // strips upload noise, which SQL can't reproduce), so this scans the tracks
+  // that already have word timing — a small set relative to the library. If
+  // that set ever gets large, denormalise song_key onto tracks and index it.
+  const candidates = await db.all<{ id: number; artist_name: string; track_name: string }>(sql`
+    SELECT DISTINCT t.id, t.artist_name, t.track_name
+    FROM tracks t
+    JOIN revisions r ON r.track_id = t.id
+    WHERE r.status IN ('active', 'pending_review')
+      AND json_extract(r.payload, '$.meta.has_word_timing') = 1
+  `);
+  return candidates.find((c) => songKey(c.artist_name, c.track_name) === key)?.id ?? null;
+}
+
+/** Vote on an existing request, and let a better link upgrade its display source. */
+async function addVote(
+  db: Db,
+  job: SyncJob,
+  input: EnqueueInput,
+  videoKey: string | null,
+  videoUrl: string | null,
+  now: number
+): Promise<SyncJob> {
+  await recordVote(db, job.id, input.submitterUserId, videoKey, videoUrl, now);
+  if (!videoKey || !videoUrl || job.videoKey === videoKey) return job;
+
+  // An embeddable yt: link beats an audio-only sp: card; keep whichever
+  // pickPreferredVideoKey would choose for a track page.
+  const preferred = pickPreferredVideoKey([
+    ...(job.videoKey ? [{ videoKey: job.videoKey, createdAt: job.createdAt }] : []),
+    { videoKey, createdAt: now },
+  ]);
+  if (preferred !== videoKey) return job;
+
+  const [updated] = await db
+    .update(syncJobs)
+    .set({ videoKey, videoUrl, updatedAt: now })
+    .where(eq(syncJobs.id, job.id))
+    .returning();
+  return updated ?? job;
+}
+
+/**
+ * One vote per person per request. The source they offered rides along: with
+ * dedup on song identity this is the only place a second or third link for the
+ * same song survives.
+ */
+async function recordVote(
+  db: Db,
+  jobId: number,
+  userId: string,
+  videoKey: string | null,
+  videoUrl: string | null,
+  now: number
+): Promise<void> {
+  try {
+    await db.insert(syncJobVotes).values({ jobId, userId, videoKey, videoUrl, createdAt: now });
+  } catch (err) {
+    // The same person asking twice is a no-op, not an error.
+    if (!isUniqueViolation(err)) throw err;
+  }
+}
+
+/**
+ * Close every open request for a track that just gained word-timed lyrics,
+ * whichever path produced them (worker import, local align, or crowd
+ * listen-along stitching). Leaves "processing" alone — a worker owns that row
+ * and reports its own outcome. Returns how many were closed.
+ */
+export async function resolveWantedForTrack(
+  db: Db,
+  trackId: number,
+  now = Date.now()
+): Promise<number> {
+  const [track] = await db.select().from(tracks).where(eq(tracks.id, trackId));
+  if (!track) return 0;
+  const closed = await db
+    .update(syncJobs)
+    .set({ status: "done", resultTrackId: trackId, updatedAt: now })
+    .where(
+      and(
+        eq(syncJobs.songKey, songKey(track.artistName, track.trackName)),
+        inArray(syncJobs.status, ["wanted", "pending_approval", "queued"])
+      )
+    )
+    .returning({ id: syncJobs.id });
+  return closed.length;
 }
 
 /**
@@ -316,12 +451,16 @@ function ownedProcessing(id: number, workerId: string) {
   );
 }
 
-export type ModerateAction = "approve" | "reject" | "cancel" | "retry";
+export type ModerateAction = "promote" | "approve" | "reject" | "cancel" | "retry";
 
 const MODERATE_FROM: Record<ModerateAction, SyncJobStatus[]> = {
+  // The only way into "queued" — i.e. the only way a request becomes work the
+  // pull worker can claim. Deliberately admin-only, so the operator decides
+  // per song that they have a lawful way to get the audio.
+  promote: ["wanted"],
   approve: ["pending_approval"],
-  reject: ["pending_approval"],
-  cancel: ["pending_approval", "queued"],
+  reject: ["wanted", "pending_approval"],
+  cancel: ["wanted", "pending_approval", "queued"],
   retry: ["failed"],
 };
 
@@ -335,7 +474,7 @@ export async function moderateSyncJob(
   now = Date.now()
 ): Promise<SyncJob | null> {
   const set =
-    action === "approve"
+    action === "promote" || action === "approve"
       ? { status: "queued" as const, updatedAt: now }
       : action === "reject"
         ? { status: "rejected" as const, rejectionReason: reason?.trim() || null, updatedAt: now }

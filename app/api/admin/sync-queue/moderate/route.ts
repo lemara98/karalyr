@@ -7,7 +7,7 @@ import { moderateSyncJob } from "@/lib/sync-queue/core";
 
 const bodySchema = z.object({
   job_id: z.number().int().positive(),
-  action: z.enum(["approve", "reject", "cancel", "retry"]),
+  action: z.enum(["promote", "approve", "reject", "cancel", "retry"]),
   reason: z.string().max(500).optional(),
 });
 

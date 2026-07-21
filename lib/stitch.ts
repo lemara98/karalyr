@@ -11,6 +11,7 @@ import {
 import { insertRevision } from "./db/queries";
 import { validatePayload, type Line, type LyricsPayload, type Word } from "./formats";
 import { median } from "./offset";
+import { resolveWantedForTrack } from "./sync-queue/core";
 
 export const STITCH_FINGERPRINT = "system:listen-align";
 /** Fraction of (non-empty) base lines that need >=1 valid observation. */
@@ -165,5 +166,14 @@ export async function runStitchCheck(db: Db, trackId: number): Promise<number | 
     parentRevisionId: best.id,
     submitterFingerprint: STITCH_FINGERPRINT,
   });
+  // Listen-along coverage just word-synced this song, so any open request for
+  // it is fulfilled — this is the path where a want gets closed by people
+  // simply playing the song. Never fatal; a lingering want is filtered from
+  // the wanted list anyway.
+  try {
+    await resolveWantedForTrack(db, trackId);
+  } catch (err) {
+    console.error(`[stitch] could not close wants for track ${trackId}:`, err);
+  }
   return revision.id;
 }

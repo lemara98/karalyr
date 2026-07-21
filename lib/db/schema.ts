@@ -179,6 +179,10 @@ export const SYNC_JOB_SOURCES = ["extension", "website"] as const;
 export type SyncJobSource = (typeof SYNC_JOB_SOURCES)[number];
 
 export const SYNC_JOB_STATUSES = [
+  // Demand only: people want this song word-synced. Carries no commitment to
+  // any particular way of producing it, and no worker can see it — every
+  // public intake lands here.
+  "wanted",
   "pending_approval",
   "queued",
   "processing",
@@ -189,30 +193,41 @@ export const SYNC_JOB_STATUSES = [
 ] as const;
 export type SyncJobStatus = (typeof SYNC_JOB_STATUSES)[number];
 
-// Statuses that occupy the one live-job-per-video slot (enforced by the
-// partial unique index below).
+// Statuses that occupy the one live-slot per song (enforced by the partial
+// unique index below), so a second request votes instead of inserting.
 export const SYNC_JOB_ACTIVE_STATUSES = [
+  "wanted",
   "pending_approval",
   "queued",
   "processing",
 ] as const satisfies readonly SyncJobStatus[];
 
-// The word-sync request queue: songs waiting for the offline aligner
-// (worker/align.py) to produce word timings. Extension submissions arrive
-// pre-approved as "queued" via the karafilt.com proxy; website submissions
-// start as "pending_approval" until an admin approves them in /admin. A
-// pull-based worker claims "queued" rows over the /api/worker/* routes and
-// the result lands as an auto_aligned revision — the queue row only carries
-// intake data, lease bookkeeping, and the result pointers.
+// The word-sync demand queue: songs people want word-timed lyrics for.
+//
+// A row is a *request*, not a work order — it records song identity, the plain
+// lyrics an aligner would need, and (via syncJobVotes) who asked. Every public
+// intake lands as "wanted"; only an admin promotes one to "queued", which is
+// the only status the pull worker can claim. That split is deliberate: it
+// keeps the public path from ever triggering a fetch, and lets a want be
+// fulfilled any way at all — crowd listen-along alignment (lib/stitch.ts), a
+// local aligner run, or an upload.
 export const syncJobs = sqliteTable(
   "sync_jobs",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     source: text("source", { enum: SYNC_JOB_SOURCES }).notNull(),
     status: text("status", { enum: SYNC_JOB_STATUSES }).notNull(),
-    // Only "yt:" keys are accepted — the worker fetches audio with yt-dlp.
-    videoKey: text("video_key").notNull(),
-    videoUrl: text("video_url").notNull(),
+    // Dedup identity: normalized "<artist>|<track>" (see lib/song-key.ts).
+    // Not the video key — the same song arrives as a video, a re-upload, a
+    // Spotify track, or with no link at all, and those must collapse to one
+    // want. Always computed server-side.
+    songKey: text("song_key").notNull(),
+    // Display source: the best link anyone has offered for this song, re-picked
+    // with pickPreferredVideoKey() as new ones arrive (an embeddable yt: beats
+    // sp:). Nullable — a want needs only an artist and a title. Every source
+    // ever supplied is kept per-requester on syncJobVotes.
+    videoKey: text("video_key"),
+    videoUrl: text("video_url"),
     artistName: text("artist_name").notNull(),
     trackName: text("track_name").notNull(),
     albumName: text("album_name"),
@@ -245,11 +260,40 @@ export const syncJobs = sqliteTable(
   (t) => [
     index("sync_jobs_status_idx").on(t.status, t.createdAt),
     index("sync_jobs_user_idx").on(t.submitterUserId, t.createdAt),
-    // At most one live job per video — the race-safe backstop behind the
-    // read-then-insert dedup in lib/sync-queue/core.ts.
-    uniqueIndex("sync_jobs_active_video_uq")
-      .on(t.videoKey)
-      .where(sql`status IN ('pending_approval', 'queued', 'processing')`),
+    // At most one live request per song — the race-safe backstop behind the
+    // read-then-insert dedup in lib/sync-queue/core.ts. Keyed on song_key, not
+    // video_key: video_key is nullable and SQLite treats NULLs as distinct in
+    // a unique index, so link-less wants would never dedup.
+    uniqueIndex("sync_jobs_active_song_uq")
+      .on(t.songKey)
+      .where(sql`status IN ('wanted', 'pending_approval', 'queued', 'processing')`),
+  ]
+);
+
+// One row per person per want. Demand is counted in distinct voters, the same
+// way ranking counts distinct signal fingerprints, so nobody can inflate a
+// song by asking twice. Each vote also keeps the source *that* requester
+// offered — with dedup on song identity, this is the only place the second and
+// third link for a song survive, and it's what makes a want traceable back to
+// somewhere the song can actually be heard.
+export const syncJobVotes = sqliteTable(
+  "sync_job_votes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    jobId: integer("job_id")
+      .notNull()
+      .references(() => syncJobs.id),
+    // Shared Supabase account id (same project as karafilt.com).
+    userId: text("user_id").notNull(),
+    videoKey: text("video_key"),
+    videoUrl: text("video_url"),
+    createdAt: integer("created_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (t) => [
+    uniqueIndex("sync_job_votes_job_user_uq").on(t.jobId, t.userId),
+    index("sync_job_votes_job_idx").on(t.jobId, t.createdAt),
   ]
 );
 
@@ -260,3 +304,4 @@ export type LineObservation = typeof lineObservations.$inferSelect;
 export type TrackVideo = typeof trackVideos.$inferSelect;
 export type LyricComment = typeof lyricComments.$inferSelect;
 export type SyncJob = typeof syncJobs.$inferSelect;
+export type SyncJobVote = typeof syncJobVotes.$inferSelect;

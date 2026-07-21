@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import type { Db } from "@/lib/db/client";
 import { linkTrackVideo } from "@/lib/db/queries";
-import { revisions, syncJobs, tracks, trackVideos } from "@/lib/db/schema";
+import { revisions, syncJobVotes, syncJobs, tracks, trackVideos } from "@/lib/db/schema";
 import { importAlignedPayload } from "@/lib/aligned-import";
+import { songKey } from "@/lib/song-key";
 import {
   claimNextJob,
   completeJob,
@@ -12,6 +13,7 @@ import {
   getOwnedProcessingJob,
   heartbeatJob,
   moderateSyncJob,
+  resolveWantedForTrack,
   RECENT_FAILURE_COOLDOWN_MS,
   RECLAIM_DELAY_MS,
   RETRY_BACKOFF_MS,
@@ -42,8 +44,21 @@ beforeEach(async () => {
   db = await makeDb();
 });
 
+/**
+ * A request an admin has promoted, i.e. actual work the pull worker can claim.
+ * Intake alone never produces one — "wanted" is the only status a user can
+ * reach — so every worker-lifecycle test goes through here.
+ */
+async function queuedJob(overrides: Partial<EnqueueInput> = {}, now = T0) {
+  const res = await enqueueSyncJob(db, input(overrides), now);
+  if (!res.ok) throw new Error(`enqueue failed: ${res.code}`);
+  const promoted = await moderateSyncJob(db, res.job.id, "promote", undefined, now);
+  if (!promoted) throw new Error("promote failed");
+  return promoted;
+}
+
 describe("enqueueSyncJob", () => {
-  it("queues extension submissions immediately with stripped lyrics", async () => {
+  it("records a request as wanted, with stripped lyrics", async () => {
     const res = await enqueueSyncJob(
       db,
       input({ rawLyrics: "[00:01.00]First line here\n[00:02.00]Second line here\nThird line here\nFourth line here" }),
@@ -51,24 +66,41 @@ describe("enqueueSyncJob", () => {
     );
     expect(res.ok).toBe(true);
     if (!res.ok) return;
-    expect(res.job.status).toBe("queued");
+    expect(res.job.status).toBe("wanted");
+    expect(res.voted).toBe(false);
     expect(res.job.source).toBe("extension");
     expect(res.job.videoKey).toBe(YT_KEY);
+    expect(res.job.songKey).toBe(songKey("Test Artist", "Test Track"));
     expect(res.job.plainLyrics).toBe(LYRICS);
     expect(res.job.submitterUserId).toBe("00000000-0000-0000-0000-000000000001");
   });
 
-  it("parks website submissions in pending_approval", async () => {
-    const res = await enqueueSyncJob(db, input({ source: "website" }), T0);
-    expect(res.ok && res.job.status).toBe("pending_approval");
+  it("no intake path can reach a worker-claimable status", async () => {
+    for (const source of ["extension", "website"] as const) {
+      const res = await enqueueSyncJob(db, input({ source, trackName: `T ${source}` }), T0);
+      expect(res.ok && res.job.status).toBe("wanted");
+    }
+    // "wanted" is invisible to the worker until an admin promotes it.
+    expect(await claimNextJob(db, "w1", 60_000, T0)).toBeNull();
   });
 
-  it("rejects non-YouTube sources", async () => {
-    const res = await enqueueSyncJob(
+  it("accepts a Spotify link, and a request with no link at all", async () => {
+    const sp = await enqueueSyncJob(
       db,
       input({ videoUrl: "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC" }),
       T0
     );
+    expect(sp.ok && sp.job.videoKey).toBe("sp:4uLU6hMCjMI75M1A2tKUQC");
+
+    const bare = await enqueueSyncJob(db, input({ videoUrl: null, trackName: "No Link" }), T0);
+    expect(bare.ok).toBe(true);
+    if (!bare.ok) return;
+    expect(bare.job.videoKey).toBeNull();
+    expect(bare.job.videoUrl).toBeNull();
+  });
+
+  it("rejects a link that isn't a recognisable source", async () => {
+    const res = await enqueueSyncJob(db, input({ videoUrl: "https://example.com/song" }), T0);
     expect(!res.ok && res.code).toBe("UnsupportedSource");
   });
 
@@ -117,15 +149,79 @@ describe("enqueueSyncJob", () => {
     expect(!res.ok && res.code).toBe("AlreadySynced");
   });
 
-  it("AlreadyQueued when a live job holds the video's slot", async () => {
+  it("a second request votes on the existing one instead of opening another", async () => {
+    const first = await enqueueSyncJob(db, input(), T0);
+    const second = await enqueueSyncJob(
+      db,
+      input({ source: "website", submitterUserId: "user-2" }),
+      T0 + 1
+    );
+    expect(second.ok && second.voted).toBe(true);
+    expect(second.ok && second.job.id).toBe(first.ok && first.job.id);
+
+    const rows = await db.select().from(syncJobs);
+    expect(rows).toHaveLength(1);
+    const votes = await db.select().from(syncJobVotes);
+    expect(votes).toHaveLength(2); // the opener counts as the first voter
+  });
+
+  it("the same person asking twice does not inflate demand", async () => {
     await enqueueSyncJob(db, input(), T0);
-    const res = await enqueueSyncJob(db, input({ source: "website" }), T0);
-    expect(!res.ok && res.code).toBe("AlreadyQueued");
+    const again = await enqueueSyncJob(db, input(), T0 + 1);
+    expect(again.ok && again.voted).toBe(true);
+    expect(await db.select().from(syncJobVotes)).toHaveLength(1);
+  });
+
+  it("collapses the same song across spelling, casing and upload noise", async () => {
+    await enqueueSyncJob(db, input({ artistName: "Đorđe", trackName: "Pesma" }), T0);
+    const variant = await enqueueSyncJob(
+      db,
+      input({
+        artistName: "ĐORĐE",
+        trackName: "Pesma (Official Video) [HD]",
+        submitterUserId: "user-2",
+      }),
+      T0 + 1
+    );
+    expect(variant.ok && variant.voted).toBe(true);
+    expect(await db.select().from(syncJobs)).toHaveLength(1);
+  });
+
+  it("keeps every source offered, and upgrades the display link to an embeddable one", async () => {
+    // Opened with a Spotify link, then someone supplies the YouTube video.
+    const first = await enqueueSyncJob(
+      db,
+      input({ videoUrl: "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC" }),
+      T0
+    );
+    expect(first.ok && first.job.videoKey).toBe("sp:4uLU6hMCjMI75M1A2tKUQC");
+
+    const second = await enqueueSyncJob(db, input({ submitterUserId: "user-2" }), T0 + 1);
+    expect(second.ok && second.job.videoKey).toBe(YT_KEY);
+    expect(second.ok && second.job.videoUrl).toBe(YT_URL);
+
+    // Both links survive on the votes, so the want stays traceable to either.
+    const votes = await db.select().from(syncJobVotes);
+    expect(votes.map((v) => v.videoKey).sort()).toEqual(["sp:4uLU6hMCjMI75M1A2tKUQC", YT_KEY]);
+  });
+
+  it("does not downgrade an embeddable display link back to audio-only", async () => {
+    await enqueueSyncJob(db, input(), T0);
+    const second = await enqueueSyncJob(
+      db,
+      input({
+        videoUrl: "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",
+        submitterUserId: "user-2",
+      }),
+      T0 + 1
+    );
+    expect(second.ok && second.job.videoKey).toBe(YT_KEY);
   });
 
   it("partial unique index rejects a second live row but allows settled ones", async () => {
     const base = {
       source: "extension" as const,
+      songKey: songKey("A", "T"),
       videoKey: YT_KEY,
       videoUrl: YT_URL,
       artistName: "A",
@@ -150,8 +246,7 @@ describe("enqueueSyncJob", () => {
   });
 
   it("cooldown: extension refused after a recent failure, website allowed", async () => {
-    const first = await enqueueSyncJob(db, input(), T0);
-    expect(first.ok).toBe(true);
+    await queuedJob();
     const claimed = await claimNextJob(db, "w1", 1000, T0);
     await failJob(db, claimed!.id, "w1", "boom", true, T0);
 
@@ -163,7 +258,7 @@ describe("enqueueSyncJob", () => {
   });
 
   it("cooldown expires", async () => {
-    await enqueueSyncJob(db, input(), T0);
+    await queuedJob();
     const claimed = await claimNextJob(db, "w1", 1000, T0);
     await failJob(db, claimed!.id, "w1", "boom", true, T0);
 
@@ -172,42 +267,91 @@ describe("enqueueSyncJob", () => {
   });
 });
 
+describe("resolveWantedForTrack", () => {
+  it("an aligned import closes the open request for that song by itself", async () => {
+    const res = await enqueueSyncJob(db, input(), T0);
+    expect(res.ok && res.job.status).toBe("wanted");
+
+    const imported = await importAlignedPayload(db, {
+      payload: samplePayload(),
+      artist: "Test Artist",
+      track: "Test Track",
+      duration: 213,
+      submitterFingerprint: "system:offline-align",
+    });
+
+    // No explicit resolve call: importAlignedPayload closes wants itself, so
+    // every fulfillment path that goes through it gets this for free.
+    const [row] = await db.select().from(syncJobs);
+    expect(row.status).toBe("done");
+    expect(row.resultTrackId).toBe(imported.trackId);
+  });
+
+  it("matches on song identity, not on a shared link", async () => {
+    // Requested with no link at all, and with noisier spelling than the track.
+    await enqueueSyncJob(
+      db,
+      input({ videoUrl: null, artistName: "test  artist", trackName: "Test Track (Official Video)" }),
+      T0
+    );
+    const track = await makeTrack(db, { artistName: "Test Artist", trackName: "Test Track" });
+    await makeRevision(db, track.id);
+
+    expect(await resolveWantedForTrack(db, track.id, T0 + 5)).toBe(1);
+  });
+
+  it("leaves a job a worker is holding alone", async () => {
+    await queuedJob();
+    const claimed = await claimNextJob(db, "w1", 60_000, T0);
+    expect(claimed).not.toBeNull();
+
+    const track = await makeTrack(db, { artistName: "Test Artist", trackName: "Test Track" });
+    await makeRevision(db, track.id);
+
+    // The worker owns this row and reports its own outcome.
+    expect(await resolveWantedForTrack(db, track.id, T0 + 5)).toBe(0);
+    const [row] = await db.select().from(syncJobs);
+    expect(row.status).toBe("processing");
+  });
+});
+
 describe("moderateSyncJob", () => {
-  async function pendingJob() {
+  async function wantedJob() {
     const res = await enqueueSyncJob(db, input({ source: "website" }), T0);
     if (!res.ok) throw new Error("enqueue failed");
     return res.job;
   }
 
-  it("approve: pending_approval → queued", async () => {
-    const job = await pendingJob();
-    const out = await moderateSyncJob(db, job.id, "approve", undefined, T0 + 1);
+  it("promote: wanted → queued, the only way work reaches a worker", async () => {
+    const job = await wantedJob();
+    expect(job.status).toBe("wanted");
+    const out = await moderateSyncJob(db, job.id, "promote", undefined, T0 + 1);
     expect(out?.status).toBe("queued");
   });
 
   it("reject stores the reason", async () => {
-    const job = await pendingJob();
+    const job = await wantedJob();
     const out = await moderateSyncJob(db, job.id, "reject", "wrong lyrics", T0 + 1);
     expect(out?.status).toBe("rejected");
     expect(out?.rejectionReason).toBe("wrong lyrics");
   });
 
   it("cancel works from queued too", async () => {
-    const job = await pendingJob();
-    await moderateSyncJob(db, job.id, "approve");
+    const job = await wantedJob();
+    await moderateSyncJob(db, job.id, "promote");
     const out = await moderateSyncJob(db, job.id, "cancel");
     expect(out?.status).toBe("cancelled");
   });
 
   it("wrong-state transitions conflict (null)", async () => {
-    const job = await pendingJob();
+    const job = await wantedJob();
     expect(await moderateSyncJob(db, job.id, "retry")).toBeNull();
     await moderateSyncJob(db, job.id, "reject");
-    expect(await moderateSyncJob(db, job.id, "approve")).toBeNull();
+    expect(await moderateSyncJob(db, job.id, "promote")).toBeNull();
   });
 
   it("retry resets attempts and clears the error", async () => {
-    await enqueueSyncJob(db, input(), T0);
+    await queuedJob();
     const claimed = await claimNextJob(db, "w1", 1000, T0);
     await failJob(db, claimed!.id, "w1", "boom", true, T0);
 
@@ -218,12 +362,16 @@ describe("moderateSyncJob", () => {
     expect(out?.nextAttemptAt).toBeNull();
   });
 
-  it("retry conflicts when another live job holds the video slot", async () => {
-    await enqueueSyncJob(db, input(), T0);
+  it("retry conflicts when another live request holds the song slot", async () => {
+    await queuedJob();
     const claimed = await claimNextJob(db, "w1", 1000, T0);
     await failJob(db, claimed!.id, "w1", "boom", true, T0);
-    // Website re-submission takes the slot while the failed row sits there.
-    const again = await enqueueSyncJob(db, input({ source: "website" }), T0 + 1000);
+    // A new want takes the slot while the failed row sits there.
+    const again = await enqueueSyncJob(
+      db,
+      input({ source: "website", submitterUserId: "user-2" }),
+      T0 + 1000
+    );
     expect(again.ok).toBe(true);
 
     expect(await moderateSyncJob(db, claimed!.id, "retry")).toBeNull();
@@ -232,10 +380,9 @@ describe("moderateSyncJob", () => {
 
 describe("claimNextJob", () => {
   it("claims the oldest eligible job and increments attempts", async () => {
-    await enqueueSyncJob(db, input(), T0);
-    await enqueueSyncJob(
-      db,
-      input({ videoUrl: "https://www.youtube.com/watch?v=abcdefghijk" }),
+    await queuedJob();
+    await queuedJob(
+      { videoUrl: "https://www.youtube.com/watch?v=abcdefghijk", trackName: "Other Track" },
       T0 + 1
     );
 
@@ -250,12 +397,12 @@ describe("claimNextJob", () => {
   it("returns null when nothing is eligible", async () => {
     expect(await claimNextJob(db, "w1", 60_000, T0)).toBeNull();
     const res = await enqueueSyncJob(db, input({ source: "website" }), T0);
-    expect(res.ok).toBe(true); // pending_approval is not claimable
+    expect(res.ok).toBe(true); // wanted is not claimable
     expect(await claimNextJob(db, "w1", 60_000, T0)).toBeNull();
   });
 
   it("respects next_attempt_at backoff", async () => {
-    await enqueueSyncJob(db, input(), T0);
+    await queuedJob();
     const first = await claimNextJob(db, "w1", 1000, T0);
     await failJob(db, first!.id, "w1", "transient", false, T0 + 1);
 
@@ -266,7 +413,7 @@ describe("claimNextJob", () => {
   });
 
   it("exactly one concurrent claimer wins a single job", async () => {
-    await enqueueSyncJob(db, input(), T0);
+    await queuedJob();
     const results = await Promise.all(
       Array.from({ length: 10 }, (_, i) => claimNextJob(db, `w${i}`, 60_000, T0))
     );
@@ -274,7 +421,7 @@ describe("claimNextJob", () => {
   });
 
   it("reclaims expired leases with retries left, after a delay", async () => {
-    await enqueueSyncJob(db, input(), T0);
+    await queuedJob();
     const job = await claimNextJob(db, "w1", 1000, T0);
     expect(job).not.toBeNull();
 
@@ -292,7 +439,7 @@ describe("claimNextJob", () => {
   });
 
   it("buries expired leases that are out of attempts", async () => {
-    await enqueueSyncJob(db, input(), T0);
+    await queuedJob();
     const j1 = await claimNextJob(db, "w1", 1000, T0);
     // First call after expiry sweeps (requeues with the reclaim delay); the
     // claim itself lands on the call after the delay passes.
@@ -310,7 +457,7 @@ describe("claimNextJob", () => {
 
 describe("heartbeat / complete / fail", () => {
   async function processingJob() {
-    await enqueueSyncJob(db, input(), T0);
+    await queuedJob();
     const job = await claimNextJob(db, "w1", 60_000, T0);
     if (!job) throw new Error("claim failed");
     return job;

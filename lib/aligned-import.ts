@@ -2,6 +2,7 @@ import type { Db } from "./db/client";
 import { findOrCreateTrack, insertRevision, linkTrackVideo } from "./db/queries";
 import type { LyricsPayload } from "./formats";
 import type { Revision } from "./db/schema";
+import { resolveWantedForTrack } from "./sync-queue/core";
 import { deriveVideoKey } from "./video-key";
 
 export interface AlignedImportInput {
@@ -48,5 +49,13 @@ export async function importAlignedPayload(
     payload: input.payload,
     submitterFingerprint: input.submitterFingerprint,
   });
+  // Anyone still waiting on this song has what they asked for. Never fatal:
+  // the revision is already in, and a stale want only means a queue row lingers
+  // (the wanted list filters synced songs out anyway).
+  try {
+    await resolveWantedForTrack(db, track.id);
+  } catch (err) {
+    console.error(`[aligned-import] could not close wants for track ${track.id}:`, err);
+  }
   return { trackId: track.id, revisionId: revision.id, revisionStatus: revision.status };
 }
