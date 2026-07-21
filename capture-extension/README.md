@@ -89,11 +89,20 @@ Then **restart the browser** so it reads the manifest.
 1. Someone requests a song (or you do, in the Studio) — it appears on `/queue`
 2. In `/admin` → **Wanted songs**, click **Promote to queue** on a song you have
    a lawful way to hear
-3. Click the extension icon → **Align next song**
-4. A tab opens and plays. Leave it alone; the popup can be closed, the run
-   continues in the service worker.
-5. When it finishes the log shows the revision number, and the song drops off
+3. Click the extension icon → **Claim next song**. It takes the job and opens
+   the song in a new tab.
+4. On **that tab**, click the extension icon again → **Record this tab**. The
+   song restarts from 0:00 and recording begins.
+5. Leave it playing. The popup can be closed; the run continues in the service
+   worker. Reopen it to watch.
+6. When it finishes the log shows the revision number, and the song drops off
    `/queue` automatically
+
+The two clicks are not an oversight. `tabCapture` only grants a stream for a
+tab the extension was **invoked on by a user gesture**, so a tab the worker
+opens by itself cannot be captured — Chrome answers "Extension has not been
+invoked for the current page". The second click supplies that gesture, which is
+why it has to happen in the popup and on the song's own tab.
 
 Only ever promote one song at a time, and stay at the machine while it runs.
 Turning this into an unattended daemon that grinds through the whole queue is

@@ -1,15 +1,19 @@
-// Orchestrator. Sequence for one song:
+// Orchestrator. Two operator steps, for a reason:
 //
-//   claim a job from the native host  ->  open its link in a tab
-//   start capturing that tab          ->  play from the beginning
-//   playback ends                     ->  stop, ship audio to the host
-//   host aligns + reports             ->  close the tab
+//   1. "Claim next song"  -> ask the host for a job, open its link in a tab
+//   2. "Record this tab"  -> capture, play from 0:00, ship the audio
 //
-// The host holds WORKER_TOKEN and does all Karalyr traffic. This extension
-// never sees the token — it only moves audio.
+// They are separate because tabCapture only works on a tab the extension has
+// been *invoked* on by a user gesture. A tab this worker opens itself has no
+// such gesture, so capturing it straight away fails with "Extension has not
+// been invoked for the current page". Step 2 lives in the popup, where the
+// click supplies the gesture, and the resulting streamId is handed here.
+//
+// The host holds WORKER_TOKEN and does all Karalyr traffic; this extension
+// only ever moves audio.
 
 const HOST_NAME = "com.karalyr.capture_host";
-const CHUNK_BYTES = 512 * 1024; // native messaging takes big messages, but chunking keeps memory flat
+const CHUNK_BYTES = 512 * 1024; // keeps memory flat on a long song
 
 let port = null;
 let state = { phase: "idle", job: null, log: [], tabId: null };
@@ -25,7 +29,7 @@ function pushLog(line) {
 }
 
 function broadcast() {
-  // The popup may be closed; that rejection is expected and uninteresting.
+  // The popup is usually closed; that rejection is expected.
   chrome.runtime.sendMessage({ type: "state", state }).catch(() => {});
 }
 
@@ -42,13 +46,11 @@ function connectHost() {
     }
     if (msg.type === "done") {
       pushLog(`Done — revision #${msg.revision_id} on track #${msg.track_id} (${msg.revision_status})`);
-      cleanupTab();
-      return setPhase("idle", { job: null });
+      return setPhase("idle", { job: null, tabId: null });
     }
     if (msg.type === "error") {
       pushLog(`Error: ${msg.message}`);
-      cleanupTab();
-      return setPhase("idle", { job: null });
+      return setPhase("idle", { job: null, tabId: null });
     }
   });
 
@@ -62,9 +64,9 @@ function connectHost() {
   return port;
 }
 
-// ---------------------------------------------------------------- run
+// ------------------------------------------------------------ step 1: claim
 
-async function startRun() {
+function claimNext() {
   if (state.phase !== "idle") return;
   state.log = [];
   setPhase("claiming");
@@ -73,44 +75,44 @@ async function startRun() {
 }
 
 async function onJobClaimed(job) {
-  if (!job.video_url) {
-    pushLog("That job has no link, so there is nothing to play. Abandoning it.");
-    connectHost().postMessage({ type: "abandon" });
-    return setPhase("idle");
-  }
-
-  setPhase("capturing", { job });
   pushLog(`Job #${job.id}: ${job.artist_name} — ${job.track_name}`);
 
+  if (!job.video_url) {
+    pushLog("This request has no link, so there is nothing to play. Releasing it.");
+    connectHost().postMessage({ type: "abandon" });
+    return setPhase("idle", { job: null });
+  }
+
+  const tab = await chrome.tabs.create({ url: job.video_url, active: true });
+  setPhase("claimed", { job, tabId: tab.id });
+  pushLog("Opened the song. Now click the Karalyr icon again and press “Record this tab”.");
+}
+
+// ---------------------------------------------------------- step 2: capture
+
+async function beginCapture(streamId, tabId) {
+  if (state.phase !== "claimed" || !state.job) return;
+  setPhase("capturing", { tabId });
+
   try {
-    const tab = await chrome.tabs.create({ url: job.video_url, active: true });
-    state.tabId = tab.id;
-    await waitForTabComplete(tab.id);
-
-    const streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id });
     await ensureOffscreen();
-
     const started = await chrome.runtime.sendMessage({
       target: "offscreen",
       type: "start-capture",
       streamId,
-      maxSeconds: job.duration_seconds || 600,
+      maxSeconds: state.job.duration_seconds || 600,
     });
     if (!started?.ok) throw new Error(started?.error || "could not start capture");
 
+    connectHost().postMessage({ type: "audio_start", job_id: state.job.id, mime: "audio/webm" });
     pushLog("Recording. Leave the tab playing — it runs at normal speed.");
-    connectHost().postMessage({ type: "audio_start", job_id: job.id, mime: "audio/webm" });
 
-    // Restart from 0 and tell us when it ends, so we capture the whole song
-    // and not whatever was left of an autoplay that already began.
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: playFromStart,
-    });
+    // Restart from 0 and tell us when it ends, so we get the whole song and
+    // not just what was left of an autoplay already in progress.
+    await chrome.scripting.executeScript({ target: { tabId }, func: playFromStart });
   } catch (err) {
     pushLog(`Capture failed: ${err.message}`);
     connectHost().postMessage({ type: "abandon" });
-    cleanupTab();
     setPhase("idle", { job: null });
   }
 }
@@ -123,7 +125,7 @@ function playFromStart() {
   try {
     video.currentTime = 0;
   } catch {
-    /* some players reject seeking before metadata; playback still works */
+    /* some players refuse to seek before metadata; playback still works */
   }
   video.play();
   video.addEventListener(
@@ -142,7 +144,6 @@ async function finishCapture(reason) {
   if (!result?.ok) {
     pushLog(`Could not finish the recording: ${result?.error}`);
     connectHost().postMessage({ type: "abandon" });
-    cleanupTab();
     return setPhase("idle", { job: null });
   }
 
@@ -153,27 +154,7 @@ async function finishCapture(reason) {
   connectHost().postMessage({ type: "audio_end" });
 
   setPhase("aligning");
-  pushLog("Audio sent. Aligning — Demucs takes a few minutes on CPU.");
-}
-
-function cleanupTab() {
-  if (state.tabId != null) {
-    chrome.tabs.remove(state.tabId).catch(() => {});
-    state.tabId = null;
-  }
-}
-
-function waitForTabComplete(tabId) {
-  return new Promise((resolve) => {
-    const listener = (id, info) => {
-      if (id === tabId && info.status === "complete") {
-        chrome.tabs.onUpdated.removeListener(listener);
-        // Players need a beat past "complete" before <video> exists.
-        setTimeout(resolve, 1500);
-      }
-    };
-    chrome.tabs.onUpdated.addListener(listener);
-  });
+  pushLog("Audio sent. Aligning — this is the slow part.");
 }
 
 async function ensureOffscreen() {
@@ -193,21 +174,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     sendResponse({ state });
     return false;
   }
-  if (message.type === "start-run") {
-    startRun();
-    return false;
-  }
-  if (message.type === "stop-run") {
-    finishCapture("stopped by hand");
-    return false;
-  }
-  if (message.type === "playback-ended") {
-    finishCapture("finished");
-    return false;
-  }
-  if (message.type === "capture-timeout") {
-    finishCapture("hit the time limit");
-    return false;
+  if (message.type === "claim-next") claimNext();
+  if (message.type === "begin-capture") beginCapture(message.streamId, message.tabId);
+  if (message.type === "stop-run") finishCapture("stopped by hand");
+  if (message.type === "playback-ended") finishCapture("finished");
+  if (message.type === "capture-timeout") finishCapture("hit the time limit");
+  if (message.type === "abandon-run") {
+    connectHost().postMessage({ type: "abandon" });
+    pushLog("Released the job.");
+    setPhase("idle", { job: null });
   }
   return false;
 });
