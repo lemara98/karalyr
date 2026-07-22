@@ -58,24 +58,50 @@ def err_log(msg):
     print(f"[capture-host] {msg}", file=sys.stderr, flush=True)
 
 
-def load_env():
-    """KEY=VALUE lines from the worker env file, without clobbering real env vars."""
+# The environment Chrome actually handed us. A real variable set here still
+# wins over the file, but Chrome gives a bare environment, so in practice the
+# file is the only source.
+_BOOT_ENV = dict(os.environ)
+
+
+def read_env_file():
+    """KEY=VALUE lines from the worker env file."""
+    values = {}
     if not WORKER_ENV.exists():
-        return
+        return values
     for raw in WORKER_ENV.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
 
 
-load_env()
-KARALYR_URL = os.environ.get("KARALYR_URL", "").rstrip("/")
-WORKER_TOKEN = os.environ.get("WORKER_TOKEN", "")
-WORKER_ID = os.environ.get("WORKER_ID") or "chrome-capture"
-PYTHON_BIN = os.environ.get("PYTHON_BIN") or str(SCRIPT_DIR / ".venv" / "bin" / "python")
-ALIGN_SCRIPT = os.environ.get("ALIGN_SCRIPT") or str(SCRIPT_DIR / "align.py")
+def refresh_config():
+    """Re-read config before each job.
+
+    Chrome keeps this process alive for as long as the extension's port is
+    open — across many songs — so reading the file once at startup meant an
+    edit to it was silently ignored until the browser restarted. Editing the
+    env file (say, to swap a stub aligner for the real one) now takes effect
+    on the next claim.
+    """
+    global KARALYR_URL, WORKER_TOKEN, WORKER_ID, PYTHON_BIN, ALIGN_SCRIPT
+    f = read_env_file()
+
+    def pick(key, default=""):
+        return _BOOT_ENV.get(key) or f.get(key) or default
+
+    KARALYR_URL = pick("KARALYR_URL").rstrip("/")
+    WORKER_TOKEN = pick("WORKER_TOKEN")
+    WORKER_ID = pick("WORKER_ID", "chrome-capture")
+    PYTHON_BIN = pick("PYTHON_BIN", str(SCRIPT_DIR / ".venv" / "bin" / "python"))
+    ALIGN_SCRIPT = pick("ALIGN_SCRIPT", str(SCRIPT_DIR / "align.py"))
+
+
+KARALYR_URL = WORKER_TOKEN = WORKER_ID = PYTHON_BIN = ALIGN_SCRIPT = ""
+refresh_config()
 
 
 # ---------------------------------------------------------------- native messaging
@@ -242,6 +268,9 @@ def main():
         kind = message.get("type")
 
         if kind == "claim":
+            # Pick up any edit to the env file since the last song.
+            refresh_config()
+            err_log(f"aligner: {ALIGN_SCRIPT} via {PYTHON_BIN}")
             try:
                 status, data = api_post(
                     "/api/worker/claim",
