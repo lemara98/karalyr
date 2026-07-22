@@ -128,9 +128,13 @@ round-trip tests.
 The app is a single standard Next.js project with zero Vercel-proprietary
 APIs — route handlers, libSQL, and nothing else.
 
+Full walkthrough in [DEPLOY.md](DEPLOY.md).
+
 - **Now (Vercel + Turso):** create a Turso database, run the migrations
   against it, set `DATABASE_URL` (libsql://…) + `DATABASE_AUTH_TOKEN` +
-  the secrets from `.env.example`, deploy.
+  the secrets from `.env.example`, deploy. Safe on multiple instances since
+  migration 0008 — rate limits and the PoW replay guard share state through
+  `kv_entries` rather than process memory.
 - **Later (VPS):** `npm run build && npm start` behind any reverse proxy;
   `DATABASE_URL` can stay Turso or go back to a local file.
 - **Important:** serve the API from a **custom domain you own** (e.g.
