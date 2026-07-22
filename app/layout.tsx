@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Analytics } from "@vercel/analytics/next";
 import { Geist_Mono, Space_Grotesk } from "next/font/google";
 import { Logo } from "@/components/Logo";
 import { KaralyrMark } from "@/components/KaralyrMark";
@@ -120,6 +121,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </p>
           </div>
         </footer>
+        {/* Page views + Web Vitals. No-ops outside Vercel, so dev is unaffected. */}
+        <Analytics />
       </body>
     </html>
   );

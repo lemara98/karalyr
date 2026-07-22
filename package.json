@@ -17,6 +17,7 @@
     "@libsql/client": "^0.15.15",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.110.5",
+    "@vercel/analytics": "^2.0.1",
     "drizzle-orm": "^0.44.2",
     "next": "^15.4.5",
     "react": "^19.1.0",
