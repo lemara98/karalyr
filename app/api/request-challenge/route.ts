@@ -2,7 +2,7 @@ import { apiError, corsOptions, json } from "@/lib/api-helpers";
 import { fingerprintFromRequest } from "@/lib/fingerprint";
 import { createChallenge } from "@/lib/pow";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
-import { getKvStore } from "@/lib/stores/memory";
+import { getKvStore } from "@/lib/stores";
 
 export async function POST(req: Request) {
   const fingerprint = fingerprintFromRequest(req);

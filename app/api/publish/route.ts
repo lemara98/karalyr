@@ -12,7 +12,7 @@ import {
 } from "@/lib/formats";
 import { verifyAndConsumeSolution } from "@/lib/pow";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
-import { getKvStore } from "@/lib/stores/memory";
+import { getKvStore } from "@/lib/stores";
 
 const bodySchema = z.object({
   challenge: z.object({ prefix: z.string(), nonce: z.string() }),

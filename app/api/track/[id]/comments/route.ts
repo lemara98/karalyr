@@ -8,7 +8,7 @@ import { MAX_COMMENT_BODY_CHARS, quoteForRange, validateLineRange } from "@/lib/
 import { validatePayload } from "@/lib/formats";
 import { verifyAndConsumeSolution } from "@/lib/pow";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
-import { getKvStore } from "@/lib/stores/memory";
+import { getKvStore } from "@/lib/stores";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 
 function commentDto(c: LyricComment) {

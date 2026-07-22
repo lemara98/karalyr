@@ -297,6 +297,25 @@ export const syncJobVotes = sqliteTable(
   ]
 );
 
+// Backing store for the rate limiters and the proof-of-work replay guard
+// (see lib/stores/kv.ts). These live in the database rather than in process
+// memory because both are only meaningful when every instance shares them:
+// per-process counters multiply the effective limit by the number of
+// instances, and a per-process replay guard lets a solved PoW challenge be
+// replayed against any instance that has not seen it.
+//
+// Rows are disposable. Losing this table costs nothing but a reset window.
+export const kvEntries = sqliteTable(
+  "kv_entries",
+  {
+    key: text("key").primaryKey(),
+    value: text("value").notNull(),
+    /** ms epoch. Reads treat a past value as absent; a sweep deletes them. */
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (t) => [index("kv_entries_expires_idx").on(t.expiresAt)]
+);
+
 export type Track = typeof tracks.$inferSelect;
 export type Revision = typeof revisions.$inferSelect;
 export type Signal = typeof signals.$inferSelect;

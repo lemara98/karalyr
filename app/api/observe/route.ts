@@ -8,7 +8,7 @@ import { fingerprintFromRequest } from "@/lib/fingerprint";
 import { getJobQueue } from "@/lib/lazy-import/in-process";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { runStitchCheck } from "@/lib/stitch";
-import { getKvStore } from "@/lib/stores/memory";
+import { getKvStore } from "@/lib/stores";
 
 // A playthrough submits one observation per sung line (~30-80 per song), so
 // this is far above /api/signal's budget but still bounded per fingerprint.

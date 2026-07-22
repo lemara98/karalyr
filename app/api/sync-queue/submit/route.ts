@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getDb } from "@/lib/db/client";
 import { apiError, corsOptions, json } from "@/lib/api-helpers";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
-import { getKvStore } from "@/lib/stores/memory";
+import { getKvStore } from "@/lib/stores";
 import { countQueuedJobs, enqueueSyncJob } from "@/lib/sync-queue/core";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 

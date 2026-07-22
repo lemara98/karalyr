@@ -8,7 +8,7 @@ import { runPromotionChecks } from "@/lib/promotion";
 import { computeBestRevision } from "@/lib/ranking";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { MAX_REPORT_NOTE_LENGTH, REPORT_REASON_VALUES } from "@/lib/reports";
-import { getKvStore } from "@/lib/stores/memory";
+import { getKvStore } from "@/lib/stores";
 
 const bodySchema = z.object({
   revision_id: z.number().int().positive(),
