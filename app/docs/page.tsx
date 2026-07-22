@@ -1,4 +1,7 @@
-const BASE = "http://localhost:3000";
+// The base URL shown in the curl examples. Hardcoding localhost meant the
+// public docs told every reader to call their own machine — so take the
+// deployed origin, falling back to localhost for `npm run dev`.
+const BASE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 function Endpoint({
   method,
