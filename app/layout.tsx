@@ -45,6 +45,7 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
       { label: "GitHub", href: "https://github.com/lemara98/karalyr" },
       { label: "LRCLIB", href: "https://lrclib.net" },
       { label: "Contributors", href: "/#contributors" },
+      { label: "Sponsors", href: "/sponsors" },
     ],
   },
 ];
@@ -65,6 +66,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </Link>
               <Link href="/docs" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
                 Docs
+              </Link>
+              <Link href="/sponsors" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
+                Sponsors
               </Link>
             </nav>
             <div className="flex items-center gap-3 sm:gap-4">

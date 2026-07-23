@@ -1,0 +1,13 @@
+[Unit]
+Description=Karalyr daily Turso database backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Optional overrides (KARALYR_DB, KARALYR_BACKUP_DIR, KARALYR_BACKUP_KEEP_DAYS);
+# the leading - means "fine if the file does not exist".
+EnvironmentFile=-%h/.config/karalyr-worker.env
+# Absolute path — adjust if the repo lives somewhere else.
+ExecStart=/home/milanknezevic/Desktop/karaoke/karalyr/scripts/backup-db.sh
+Nice=10

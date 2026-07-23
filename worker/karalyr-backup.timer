@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Karalyr database backup daily
+
+[Timer]
+OnCalendar=daily
+# Catch up after boot if the machine was off at the scheduled time.
+Persistent=true
+RandomizedDelaySec=15m
+
+[Install]
+WantedBy=timers.target

@@ -109,3 +109,30 @@ only.
 - Legal posture: processing audio you possess, locally, publishing only
   timing metadata. Where the audio came from is on you — see the project
   README's deployment/legal notes.
+
+## Daily database backups
+
+With new lyrics landing every day, the production Turso database gets a
+daily SQL dump. `scripts/backup-db.sh` writes a dated `karalyr-<stamp>.sql.gz`
+into `~/karalyr-backups` (30-day retention) and refuses to prune anything
+when a dump comes back empty — a broken run never eats the good copies.
+
+Enable the schedule with the user units next to this file:
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp worker/karalyr-backup.service worker/karalyr-backup.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now karalyr-backup.timer
+systemctl --user list-timers karalyr-backup.timer   # see the next run
+```
+
+The timer is `Persistent=true`, so a machine that was off at backup time
+catches up on boot. Override `KARALYR_DB`, `KARALYR_BACKUP_DIR`, or
+`KARALYR_BACKUP_KEEP_DAYS` in `~/.config/karalyr-worker.env` if the defaults
+don't fit. Restore into a fresh database with:
+
+```bash
+turso db create karalyr-restored
+gzip -cd ~/karalyr-backups/karalyr-<stamp>.sql.gz | turso db shell karalyr-restored
+```
