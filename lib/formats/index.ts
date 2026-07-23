@@ -1,7 +1,7 @@
 import { parseEnhancedLrc, serializeEnhancedLrc } from "./enhanced-lrc";
 import { parseLrc, serializeLrc } from "./lrc";
 import { parseUltraStar } from "./ultrastar";
-import { FormatError, LyricsPayload, payloadSchema } from "./types";
+import { FormatError, LyricsPayload, payloadSchema, Word } from "./types";
 
 export * from "./types";
 export { parseLrc, serializeLrc, formatTimestamp, parseTimestampMs } from "./lrc";
@@ -43,9 +43,43 @@ export function validatePayload(value: unknown): LyricsPayload {
   return result.data;
 }
 
-/** The string served as LRCLIB-compatible syncedLyrics. */
-export function payloadToSyncedLyrics(payload: LyricsPayload): string {
+/**
+ * The string served as LRCLIB-compatible syncedLyrics. Word-level by default
+ * (external clients expect one tag per word); pass `syllables: true` for the
+ * full-fidelity form the Studio round-trips.
+ */
+export function payloadToSyncedLyrics(
+  payload: LyricsPayload,
+  opts: { syllables?: boolean } = {}
+): string {
   return payload.meta.has_word_timing
-    ? serializeEnhancedLrc(payload)
+    ? serializeEnhancedLrc(payload, opts)
     : serializeLrc(payload);
+}
+
+/**
+ * 0-100 sweep position for the word being sung at `timeMs`. With syllable
+ * timing the fill follows the measured syllable boundaries (weighted by
+ * text length, which tracks rendered width); otherwise it wipes linearly
+ * across the word's own start→end window.
+ */
+export function wordFillPercent(w: Word, timeMs: number): number {
+  const syls = w.syllables;
+  if (!syls || syls.length < 2) {
+    if (w.end_ms <= w.start_ms) return 100;
+    return Math.round(Math.min(100, Math.max(0, (100 * (timeMs - w.start_ms)) / (w.end_ms - w.start_ms))));
+  }
+  const total = syls.reduce((n, s) => n + s.text.length, 0) || 1;
+  let done = 0;
+  for (const s of syls) {
+    if (timeMs >= s.end_ms) {
+      done += s.text.length;
+      continue;
+    }
+    if (timeMs >= s.start_ms && s.end_ms > s.start_ms) {
+      done += (s.text.length * (timeMs - s.start_ms)) / (s.end_ms - s.start_ms);
+    }
+    break;
+  }
+  return Math.round(Math.min(100, (100 * done) / total));
 }

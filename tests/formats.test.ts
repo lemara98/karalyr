@@ -8,6 +8,7 @@ import {
   serializeEnhancedLrc,
   serializeLrc,
   validatePayload,
+  wordFillPercent,
   FormatError,
 } from "@/lib/formats";
 import { applyOffset, median } from "@/lib/offset";
@@ -178,5 +179,82 @@ describe("applyOffset / median", () => {
   it("computes medians", () => {
     expect(median([300, 100, 200])).toBe(200);
     expect(median([100, 200])).toBe(150);
+  });
+});
+
+describe("syllable timing", () => {
+  // BPM 300 -> 50 ms/beat, GAP 1000. "Hello" = two timed syllables.
+  const US = [
+    "#BPM:300",
+    "#GAP:1000",
+    ": 0 4 12 Hel",
+    ": 4 4 12 lo",
+    ": 10 4 10  there",
+    "E",
+  ].join("\n");
+
+  it("ultrastar preserves syllables on split words only", () => {
+    const p = parseUltraStar(US);
+    const [hello, there] = p.lines[0].words!;
+    expect(hello.syllables).toEqual([
+      { text: "Hel", start_ms: 1000, end_ms: 1200 },
+      { text: "lo", start_ms: 1200, end_ms: 1400 },
+    ]);
+    expect(there.syllables).toBeUndefined();
+  });
+
+  it("enhanced LRC round-trips syllables via unspaced tags", () => {
+    const p = parseUltraStar(US);
+    const text = serializeEnhancedLrc(p, { syllables: true });
+    expect(text).toContain("<00:01.00>Hel<00:01.20>lo <00:01.50>there");
+    const back = parseEnhancedLrc(text);
+    expect(back.lines[0].text).toBe("Hello there");
+    // The last syllable's end stretches to the next word's tag — the same
+    // lossiness word-level Enhanced LRC always had.
+    expect(back.lines[0].words![0].syllables).toEqual([
+      { text: "Hel", start_ms: 1000, end_ms: 1200 },
+      { text: "lo", start_ms: 1200, end_ms: 1500 },
+    ]);
+    expect(back.lines[0].words![1]).toMatchObject({ text: "there", start_ms: 1500, end_ms: 1700 });
+  });
+
+  it("payloadToSyncedLyrics stays word-level unless asked", () => {
+    const p = parseUltraStar(US);
+    expect(payloadToSyncedLyrics(p)).toContain("<00:01.00>Hello");
+    expect(payloadToSyncedLyrics(p)).not.toContain("Hel<");
+    expect(payloadToSyncedLyrics(p, { syllables: true })).toContain("Hel<00:01.20>lo");
+  });
+
+  it("validatePayload keeps syllables through a JSON round trip", () => {
+    const p = parseUltraStar(US);
+    const v = validatePayload(JSON.parse(JSON.stringify(p)));
+    expect(v.lines[0].words![0].syllables).toHaveLength(2);
+  });
+
+  it("wordFillPercent follows syllable boundaries", () => {
+    const w = {
+      text: "Hello",
+      start_ms: 1000,
+      end_ms: 2000,
+      syllables: [
+        { text: "Hel", start_ms: 1000, end_ms: 1800 },
+        { text: "lo", start_ms: 1800, end_ms: 2000 },
+      ],
+    };
+    // At 1800 the first syllable (3 of 5 chars) is done: 60%, not linear 80%.
+    expect(wordFillPercent(w, 1800)).toBe(60);
+    expect(wordFillPercent(w, 1000)).toBe(0);
+    expect(wordFillPercent(w, 2000)).toBe(100);
+    expect(wordFillPercent({ text: "Hello", start_ms: 1000, end_ms: 2000 }, 1800)).toBe(80);
+  });
+
+  it("applyOffset shifts syllables too", () => {
+    const p = parseUltraStar(US);
+    const shifted = applyOffset(p, 250);
+    expect(shifted.lines[0].words![0].syllables![0]).toEqual({
+      text: "Hel",
+      start_ms: 1250,
+      end_ms: 1450,
+    });
   });
 });

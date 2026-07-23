@@ -17,6 +17,11 @@ export function applyOffset(payload: LyricsPayload, offsetMs: number): LyricsPay
         ...w,
         start_ms: shift(w.start_ms),
         end_ms: shift(w.end_ms),
+        syllables: w.syllables?.map((s) => ({
+          ...s,
+          start_ms: shift(s.start_ms),
+          end_ms: shift(s.end_ms),
+        })),
       })),
     })),
   };

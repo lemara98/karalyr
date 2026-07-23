@@ -101,6 +101,8 @@ export function parseUltraStar(input: string): LyricsPayload {
   const lines: Line[] = finishedLines.map((fl) => {
     // Merge syllables into words: a syllable starting with a space (or the
     // first syllable) starts a new word; others append to the previous word.
+    // The syllable spans themselves are kept on the word (UltraStar timing
+    // is natively syllable-level) whenever a word has more than one.
     const words: Word[] = [];
     for (const syl of fl.syllables) {
       const startsWord = words.length === 0 || syl.text.startsWith(" ");
@@ -108,12 +110,20 @@ export function parseUltraStar(input: string): LyricsPayload {
       const start = toMs(syl.beat);
       const end = toMs(syl.beat + syl.lengthBeats);
       if (startsWord || words.length === 0) {
-        if (text !== "") words.push({ text, start_ms: start, end_ms: end });
+        if (text !== "") {
+          words.push({ text, start_ms: start, end_ms: end, syllables: [{ text, start_ms: start, end_ms: end }] });
+        }
       } else {
         const prev = words[words.length - 1];
+        if (text !== "") prev.syllables!.push({ text, start_ms: start, end_ms: end });
+        else if (prev.syllables!.length > 0) prev.syllables![prev.syllables!.length - 1].end_ms = end;
         prev.text += text;
         prev.end_ms = end;
       }
+    }
+    // A single syllable is just the word's own span — drop the redundancy.
+    for (const w of words) {
+      if (w.syllables && w.syllables.length < 2) delete w.syllables;
     }
     const first = fl.syllables[0];
     const last = fl.syllables[fl.syllables.length - 1];

@@ -1,9 +1,19 @@
 import { z } from "zod";
 
+export const syllableSchema = z.object({
+  text: z.string(),
+  start_ms: z.number().int().nonnegative(),
+  end_ms: z.number().int().nonnegative(),
+});
+
 export const wordSchema = z.object({
   text: z.string(),
   start_ms: z.number().int().nonnegative(),
   end_ms: z.number().int().nonnegative(),
+  // Sub-word timing (UltraStar imports, the offline aligner). Only present
+  // when a word actually splits: a single syllable would just repeat the
+  // word's own span. Syllable texts concatenate to the word text.
+  syllables: z.array(syllableSchema).min(2).optional(),
 });
 
 export const lineSchema = z.object({
@@ -24,6 +34,7 @@ export const payloadSchema = z.object({
   }),
 });
 
+export type Syllable = z.infer<typeof syllableSchema>;
 export type Word = z.infer<typeof wordSchema>;
 export type Line = z.infer<typeof lineSchema>;
 export type LyricsPayload = z.infer<typeof payloadSchema>;

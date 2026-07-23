@@ -10,6 +10,7 @@ import {
   type CSSProperties,
 } from "react";
 import type { LyricsPayload } from "@/lib/formats/types";
+import { wordFillPercent } from "@/lib/formats";
 import { gapSegments } from "@/lib/gaps";
 
 function fmt(ms: number): string {
@@ -274,16 +275,10 @@ export function LyricsView({
                         : timeMs >= w.start_ms
                           ? "singing"
                           : "upcoming";
-                    // The singing word wipes left→right across its own
-                    // start→end window; CSS reads --word-progress.
-                    const fill =
-                      state === "singing"
-                        ? w.end_ms > w.start_ms
-                          ? Math.round(
-                              (100 * (timeMs - w.start_ms)) / (w.end_ms - w.start_ms)
-                            )
-                          : 100
-                        : undefined;
+                    // The singing word wipes left→right; CSS reads
+                    // --word-progress. With syllable timing the wipe
+                    // follows the measured syllable boundaries.
+                    const fill = state === "singing" ? wordFillPercent(w, timeMs) : undefined;
                     // The separating space lives OUTSIDE the span: the
                     // .word spans are inline-block, which trims trailing
                     // whitespace inside them.
