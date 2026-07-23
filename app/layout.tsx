@@ -28,6 +28,7 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
     links: [
       { label: "Library", href: "/library" },
       { label: "Studio", href: "/contribute" },
+      { label: "Queue", href: "/queue" },
       { label: "API Docs", href: "/docs" },
     ],
   },
@@ -43,7 +44,7 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
     links: [
       { label: "GitHub", href: "https://github.com/lemara98/karalyr" },
       { label: "LRCLIB", href: "https://lrclib.net" },
-      { label: "Contributors", href: "/#contributors" },
+      { label: "Contributors", href: "/contributors" },
       { label: "Sponsors", href: "/sponsors" },
     ],
   },
@@ -63,11 +64,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/contribute" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
                 Studio
               </Link>
+              <Link href="/queue" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
+                Queue
+              </Link>
               <Link href="/docs" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
                 Docs
               </Link>
               <Link href="/sponsors" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
                 Sponsors
+              </Link>
+              <Link href="/contributors" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
+                Contributors
               </Link>
             </nav>
             <div className="flex items-center gap-3 sm:gap-4">

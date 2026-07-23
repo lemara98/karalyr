@@ -3,11 +3,15 @@ import type { Db } from "./client";
 import {
   lyricComments,
   revisions,
+  syncJobComments,
+  syncJobs,
   tracks,
   trackVideos,
   type LyricComment,
   type Revision,
   type Source,
+  type SyncJob,
+  type SyncJobComment,
   type Tier,
   type Track,
   type TrackVideo,
@@ -447,6 +451,54 @@ export async function deleteLyricComment(db: Db, id: number): Promise<boolean> {
   return deleted.length > 0;
 }
 
+export interface NewSyncJobCommentInput {
+  jobId: number;
+  body: string;
+  authorUserId: string;
+  authorName: string | null;
+}
+
+export async function insertSyncJobComment(
+  db: Db,
+  input: NewSyncJobCommentInput
+): Promise<SyncJobComment> {
+  const [created] = await db
+    .insert(syncJobComments)
+    .values({ ...input, createdAt: Date.now() })
+    .returning();
+  return created;
+}
+
+/** All comments on a queue candidate, oldest first. */
+export async function listSyncJobComments(db: Db, jobId: number): Promise<SyncJobComment[]> {
+  return db
+    .select()
+    .from(syncJobComments)
+    .where(eq(syncJobComments.jobId, jobId))
+    .orderBy(asc(syncJobComments.createdAt), asc(syncJobComments.id));
+}
+
+/** Latest candidate comments across all jobs, for moderation. */
+export async function listRecentSyncJobComments(
+  db: Db,
+  limit = 100
+): Promise<{ comment: SyncJobComment; job: SyncJob }[]> {
+  return db
+    .select({ comment: syncJobComments, job: syncJobs })
+    .from(syncJobComments)
+    .innerJoin(syncJobs, eq(syncJobs.id, syncJobComments.jobId))
+    .orderBy(desc(syncJobComments.createdAt), desc(syncJobComments.id))
+    .limit(limit);
+}
+
+export async function deleteSyncJobComment(db: Db, id: number): Promise<boolean> {
+  const deleted = await db
+    .delete(syncJobComments)
+    .where(eq(syncJobComments.id, id))
+    .returning({ id: syncJobComments.id });
+  return deleted.length > 0;
+}
+
 export interface WantedSong {
   jobId: number;
   artistName: string;
@@ -459,19 +511,71 @@ export interface WantedSong {
   videoKey: string | null;
   /** Set when the song is already in the library, just without word timing. */
   trackId: number | null;
+  /** Opening of the submitted lyrics — a teaser, not the full text. */
+  lyricsPreview: string | null;
   createdAt: number;
 }
 
+export interface WantedSearchResult {
+  songs: WantedSong[];
+  total: number;
+  /** The page actually served — clamped into [1, ceil(total/perPage)]. */
+  page: number;
+  perPage: number;
+}
+
+/** Treat %, _ and \ literally inside a LIKE pattern (paired with ESCAPE '\'). */
+function escapeLike(s: string): string {
+  return s.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
 /**
- * The most-wanted songs: open requests ranked by how many distinct people
- * asked, oldest first on a tie so a long-standing request isn't buried by a
- * newer one with equal demand.
+ * Search + paginate the open requests. Every term must match (AND), each
+ * against any of artist, title, album, or the submitted lyrics text — people
+ * often remember a line, not the title. LIKE is plenty: the queue is capped
+ * at a few hundred rows, so this needs no FTS.
+ *
+ * Ranked by how many distinct people asked, oldest first on a tie so a
+ * long-standing request isn't buried by a newer one with equal demand — a
+ * fully deterministic order, which is what makes OFFSET paging stable.
  *
  * Songs that have since been word-synced are excluded defensively — closing
  * them is resolveWantedForTrack's job, but a request that arrived while a
  * revision was mid-flight shouldn't show up here in the meantime.
  */
-export async function listMostWantedSongs(db: Db, limit = 10): Promise<WantedSong[]> {
+export async function searchWantedSongs(
+  db: Db,
+  { q = "", page = 1, perPage = 20 }: { q?: string; page?: number; perPage?: number } = {}
+): Promise<WantedSearchResult> {
+  const terms = q.trim().slice(0, 200).split(/\s+/).filter(Boolean).slice(0, 8);
+
+  const where = [
+    sql`j.status IN ('wanted', 'pending_approval', 'queued', 'processing')`,
+    sql`NOT EXISTS (
+      SELECT 1 FROM track_videos tv
+      JOIN revisions r ON r.track_id = tv.track_id
+      WHERE tv.video_key = j.video_key
+        AND r.status IN ('active', 'pending_review')
+        AND json_extract(r.payload, '$.meta.has_word_timing') = 1
+    )`,
+    ...terms.map((term) => {
+      const pat = `%${escapeLike(term)}%`;
+      return sql`(j.artist_name LIKE ${pat} ESCAPE '\\'
+        OR j.track_name LIKE ${pat} ESCAPE '\\'
+        OR coalesce(j.album_name, '') LIKE ${pat} ESCAPE '\\'
+        OR j.plain_lyrics LIKE ${pat} ESCAPE '\\')`;
+    }),
+  ];
+  const whereSql = sql.join(where, sql` AND `);
+
+  // Count first (no votes join needed — results are one row per job), then
+  // clamp the page so out-of-range requests serve the last page, not a void.
+  const [count] = await db.all<{ n: number }>(
+    sql`SELECT COUNT(*) AS n FROM sync_jobs j WHERE ${whereSql}`
+  );
+  const total = count?.n ?? 0;
+  const safePage = Math.min(Math.max(1, Math.floor(page) || 1), Math.max(1, Math.ceil(total / perPage)));
+
   const rows = await db.all<{
     job_id: number;
     artist_name: string;
@@ -481,28 +585,23 @@ export async function listMostWantedSongs(db: Db, limit = 10): Promise<WantedSon
     video_url: string | null;
     video_key: string | null;
     track_id: number | null;
+    lyrics_preview: string | null;
     created_at: number;
   }>(sql`
     SELECT j.id AS job_id, j.artist_name, j.track_name, j.album_name,
       j.video_url, j.video_key, j.created_at,
+      substr(j.plain_lyrics, 1, 500) AS lyrics_preview,
       COUNT(DISTINCT v.user_id) AS voters,
       (SELECT tv.track_id FROM track_videos tv WHERE tv.video_key = j.video_key LIMIT 1) AS track_id
     FROM sync_jobs j
     LEFT JOIN sync_job_votes v ON v.job_id = j.id
-    WHERE j.status IN ('wanted', 'pending_approval', 'queued', 'processing')
-      AND NOT EXISTS (
-        SELECT 1 FROM track_videos tv
-        JOIN revisions r ON r.track_id = tv.track_id
-        WHERE tv.video_key = j.video_key
-          AND r.status IN ('active', 'pending_review')
-          AND json_extract(r.payload, '$.meta.has_word_timing') = 1
-      )
+    WHERE ${whereSql}
     GROUP BY j.id
     ORDER BY voters DESC, j.created_at ASC, j.id ASC
-    LIMIT ${limit}
+    LIMIT ${perPage} OFFSET ${(safePage - 1) * perPage}
   `);
 
-  return rows.map((r) => ({
+  const songs = rows.map((r) => ({
     jobId: r.job_id,
     artistName: r.artist_name,
     trackName: r.track_name,
@@ -511,8 +610,49 @@ export async function listMostWantedSongs(db: Db, limit = 10): Promise<WantedSon
     videoUrl: r.video_url,
     videoKey: r.video_key,
     trackId: r.track_id,
+    lyricsPreview: r.lyrics_preview?.trim() ? r.lyrics_preview : null,
     createdAt: r.created_at,
   }));
+
+  return { songs, total, page: safePage, perPage };
+}
+
+/** The most-wanted songs — page 1 of the unfiltered search. */
+export async function listMostWantedSongs(db: Db, limit = 10): Promise<WantedSong[]> {
+  return (await searchWantedSongs(db, { perPage: limit })).songs;
+}
+
+export interface WantedSongDetail {
+  job: SyncJob;
+  /** Distinct people who asked for it. */
+  voters: number;
+  /** Every link anyone offered, newest first. */
+  sources: { videoKey: string; videoUrl: string; createdAt: number }[];
+  /** Track already in the library via the job's link (may lack word timing). */
+  libraryTrackId: number | null;
+}
+
+/**
+ * One queue candidate with everything its page shows. No status filter on
+ * purpose: done and rejected requests keep their page (with the outcome),
+ * only the listing hides them.
+ */
+export async function getWantedSongDetail(db: Db, jobId: number): Promise<WantedSongDetail | null> {
+  const [job] = await db.select().from(syncJobs).where(eq(syncJobs.id, jobId));
+  if (!job) return null;
+
+  const [voters, sources, videoRows] = await Promise.all([
+    countJobVoters(db, jobId),
+    listWantedSources(db, jobId),
+    job.videoKey
+      ? db
+          .select({ trackId: trackVideos.trackId })
+          .from(trackVideos)
+          .where(eq(trackVideos.videoKey, job.videoKey))
+      : Promise.resolve([]),
+  ]);
+
+  return { job, voters, sources, libraryTrackId: videoRows[0]?.trackId ?? null };
 }
 
 /** Distinct people who asked for one request. */

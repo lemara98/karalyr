@@ -3,7 +3,7 @@ import { countDistinct, count, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { listMostUsedTracks, listMostWantedSongs } from "@/lib/db/queries";
 import { revisions, tracks } from "@/lib/db/schema";
-import { CONTRIBUTORS_URL, getContributors } from "@/lib/github";
+import { getContributors } from "@/lib/github";
 import { ContributorsGrid } from "@/components/ContributorsGrid";
 import { KaralyrMark } from "@/components/KaralyrMark";
 import { LyricsDemo } from "@/components/LyricsDemo";
@@ -306,14 +306,12 @@ export default async function HomePage() {
             </p>
             <div className="mb-4 flex items-baseline justify-between gap-4">
               <h3 className="text-lg font-semibold">Contributors</h3>
-              <a
-                href={CONTRIBUTORS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/contributors"
                 className="text-sm text-[color:var(--klr-b)] transition-colors hover:text-[color:var(--color-text)]"
               >
                 See all contributors →
-              </a>
+              </Link>
             </div>
             <ContributorsGrid contributors={contributors} limit={8} />
           </div>

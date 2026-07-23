@@ -4,6 +4,8 @@ import {
   lyricComments,
   revisions,
   signals,
+  syncJobs,
+  syncJobVotes,
   tracks,
   type LyricComment,
   type Revision,
@@ -118,4 +120,32 @@ export async function makeSignal(
     })
     .returning();
   return sig;
+}
+
+let jobSeq = 0;
+
+/** A queue request. Unique songKey per call — the partial unique index allows
+ *  only one live request per song. */
+export async function makeSyncJob(db: Db, overrides: Partial<typeof syncJobs.$inferInsert> = {}) {
+  const n = ++jobSeq;
+  const [job] = await db
+    .insert(syncJobs)
+    .values({
+      source: "website",
+      status: "wanted",
+      songKey: `test artist ${n}|test song ${n}`,
+      artistName: `Test Artist ${n}`,
+      trackName: `Test Song ${n}`,
+      plainLyrics: `la la la ${n}\nsecond line`,
+      submitterUserId: "user-1",
+      createdAt: Date.now() + n,
+      updatedAt: Date.now() + n,
+      ...overrides,
+    })
+    .returning();
+  return job;
+}
+
+export async function makeJobVote(db: Db, jobId: number, userId: string) {
+  await db.insert(syncJobVotes).values({ jobId, userId, createdAt: Date.now() });
 }

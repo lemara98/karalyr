@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { TierBadge } from "./TierBadge";
 import type { Source, Tier } from "@/lib/db/schema";
 import type { LyricsPayload } from "@/lib/formats/types";
+import { parseVideoKey } from "@/lib/video-key";
 
 interface AdminComment {
   id: number;
@@ -19,10 +20,67 @@ interface AdminComment {
   created_at: number;
 }
 
+interface AdminJobComment {
+  id: number;
+  job_id: number;
+  artist_name: string;
+  track_name: string;
+  status: string;
+  body: string;
+  author_name: string | null;
+  author_user_id: string;
+  created_at: number;
+}
+
 interface SyncSource {
   videoKey: string;
   videoUrl: string;
   createdAt: number;
+}
+
+/** Inline player for a candidate — mounts the iframe only while open. */
+function JobEmbed({ videoKey, title }: { videoKey: string | null; title: string }) {
+  const [open, setOpen] = useState(false);
+  const video = parseVideoKey(videoKey);
+  if (!video) return null;
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="text-xs text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
+      >
+        {open ? "Hide player" : video.platform === "spotify" ? "▶ Play (Spotify)" : "▶ Play (YouTube)"}
+      </button>
+      {open &&
+        (video.platform === "youtube" ? (
+          <div className="relative mt-2 aspect-video w-full max-w-md overflow-hidden rounded-xl border border-white/10">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${video.id}?rel=0`}
+              title={`YouTube — ${title}`}
+              loading="lazy"
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="absolute inset-0 h-full w-full"
+              style={{ border: 0 }}
+            />
+          </div>
+        ) : (
+          <div className="mt-2 w-full max-w-md overflow-hidden rounded-xl border border-white/10">
+            <iframe
+              src={`https://open.spotify.com/embed/track/${video.id}`}
+              title={`Spotify — ${title}`}
+              width="100%"
+              height={152}
+              loading="lazy"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              className="block"
+              style={{ border: 0 }}
+            />
+          </div>
+        ))}
+    </div>
+  );
 }
 
 interface SyncJob {
@@ -143,6 +201,7 @@ export function AdminPanel() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [items, setItems] = useState<PendingItem[] | null>(null);
   const [comments, setComments] = useState<AdminComment[] | null>(null);
+  const [jobComments, setJobComments] = useState<AdminJobComment[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [revertId, setRevertId] = useState("");
   const [syncWanted, setSyncWanted] = useState<SyncJob[] | null>(null);
@@ -181,6 +240,12 @@ export function AdminPanel() {
     if (commentsRes.ok) {
       const commentsBody = await commentsRes.json();
       setComments(commentsBody.comments);
+    }
+
+    const jobCommentsRes = await fetch("/api/admin/job-comments");
+    if (jobCommentsRes.ok) {
+      const jobCommentsBody = await jobCommentsRes.json();
+      setJobComments(jobCommentsBody.comments);
     }
   }, [loadSync]);
 
@@ -239,6 +304,18 @@ export function AdminPanel() {
     });
     const body = await res.json().catch(() => ({}));
     setMessage(res.ok ? `Comment #${commentId} deleted` : body.message ?? "Delete failed");
+    load();
+  }
+
+  async function deleteJobComment(commentId: number) {
+    setMessage(null);
+    const res = await fetch("/api/admin/job-comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comment_id: commentId, action: "delete" }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setMessage(res.ok ? `Request comment #${commentId} deleted` : body.message ?? "Delete failed");
     load();
   }
 
@@ -350,9 +427,13 @@ export function AdminPanel() {
             <div key={j.id} className="klr-card p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <span className="font-medium">
+                  <a
+                    href={`/queue/${j.id}`}
+                    className="font-medium hover:text-[color:var(--klr-hi)] hover:underline"
+                    title="Open the candidate page — full lyrics, player, comments"
+                  >
                     {j.artist_name} — {j.track_name}
-                  </span>{" "}
+                  </a>{" "}
                   <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[color:var(--klr-a)]">
                     {j.source}
                   </span>
@@ -456,6 +537,7 @@ export function AdminPanel() {
                   </span>
                 )}
               </p>
+              <JobEmbed videoKey={j.video_key} title={`${j.artist_name} — ${j.track_name}`} />
               <details className="mt-2 text-xs">
                 <summary className="cursor-pointer text-[color:var(--color-text-dim)]">
                   Lyrics preview ({j.line_count} lines)
@@ -615,6 +697,52 @@ export function AdminPanel() {
               <button
                 className="btn btn-secondary btn-sm !text-red-300"
                 onClick={() => deleteComment(c.id)}
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">
+          Request comments{" "}
+          {jobComments && (
+            <span className="text-[color:var(--color-text-dim)]">
+              (latest {jobComments.length})
+            </span>
+          )}
+        </h2>
+        {jobComments?.length === 0 && (
+          <p className="text-sm text-[color:var(--color-text-dim)]">No comments yet.</p>
+        )}
+        <div className="space-y-3">
+          {jobComments?.map((c) => (
+            <div key={c.id} className="klr-card flex flex-wrap items-start justify-between gap-3 p-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm">
+                  <a
+                    href={`/queue/${c.job_id}`}
+                    className="font-medium text-[color:var(--klr-b)] hover:underline"
+                  >
+                    {c.artist_name} — {c.track_name}
+                  </a>
+                  <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">
+                    {c.status.replaceAll("_", " ")} · {c.author_name ?? "Anonymous"}{" "}
+                    <span style={{ fontFamily: "var(--font-mono)" }}>
+                      ({c.author_user_id.slice(0, 8)})
+                    </span>{" "}
+                    · {new Date(c.created_at).toLocaleString()}
+                  </span>
+                </p>
+                <p className="mt-1 break-words text-sm" title={c.body}>
+                  {c.body.length > 200 ? `${c.body.slice(0, 200)}…` : c.body}
+                </p>
+              </div>
+              <button
+                className="btn btn-secondary btn-sm !text-red-300"
+                onClick={() => deleteJobComment(c.id)}
               >
                 Delete
               </button>

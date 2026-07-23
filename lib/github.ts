@@ -23,9 +23,6 @@ function baseHeaders(token: string | undefined): Record<string, string> {
   return headers;
 }
 
-/** Where "See all contributors" points — the repo's contributors graph. */
-export const CONTRIBUTORS_URL = `https://github.com/${OWNER}/${REPO}/graphs/contributors`;
-
 export type Contributor = {
   login: string;
   avatarUrl: string;

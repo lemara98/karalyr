@@ -14,6 +14,14 @@ export function ContributorsGrid({
 }) {
   const list = limit ? contributors.slice(0, limit) : contributors;
 
+  if (list.length === 0) {
+    return (
+      <div className="klr-card p-10 text-center text-sm text-[color:var(--color-text-dim)]">
+        Contributor list loads from GitHub. Be the first, open a pull request.
+      </div>
+    );
+  }
+
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {list.map((c) => (

@@ -1,24 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { WantedSong } from "@/lib/db/queries";
+import { parseVideoKey } from "@/lib/video-key";
+import { QueueVoteButton } from "./QueueVoteButton";
 
 /**
  * Ranked list of songs waiting for word-timed lyrics. Numbered because the
  * rank is the information — this is a demand leaderboard, not a catalogue.
+ * `startRank` keeps the numbering honest across /queue pages.
  *
- * Each row offers both trace directions: out to wherever the song can be heard
- * (the best link anyone supplied) and in to the track page when the song is
- * already in the library without word timing.
+ * Each row's title opens the candidate page (/queue/[id]) with the full
+ * story: player, complete lyrics, votes and comments.
  */
 export function WantedList({
   songs,
   showVote = true,
+  startRank = 1,
 }: {
   songs: WantedSong[];
   showVote?: boolean;
+  startRank?: number;
 }) {
   if (songs.length === 0) {
     return (
@@ -32,7 +35,7 @@ export function WantedList({
     <ol className="flex list-none flex-col gap-2 p-0">
       {songs.map((song, i) => (
         <li key={song.jobId}>
-          <WantedRow song={song} rank={i + 1} showVote={showVote} />
+          <WantedRow song={song} rank={startRank + i} showVote={showVote} />
         </li>
       ))}
     </ol>
@@ -48,31 +51,10 @@ function WantedRow({
   rank: number;
   showVote: boolean;
 }) {
-  const router = useRouter();
-  const [state, setState] = useState<"idle" | "sending" | "done">("idle");
-  const [error, setError] = useState<string | null>(null);
-
-  async function vote() {
-    setState("sending");
-    setError(null);
-    const res = await fetch("/api/sync-queue/vote", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ job_id: song.jobId }),
-    });
-    if (res.status === 401) {
-      router.push(`/login?next=/queue`);
-      return;
-    }
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.message ?? "Could not record that");
-      setState("idle");
-      return;
-    }
-    setState("done");
-    router.refresh();
-  }
+  // The player mounts only while open, so a 100-row queue doesn't load a
+  // hundred iframes up front.
+  const [preview, setPreview] = useState(false);
+  const video = parseVideoKey(song.videoKey);
 
   return (
     <div className="klr-card flex flex-wrap items-center gap-x-4 gap-y-2 p-3.5">
@@ -83,8 +65,11 @@ function WantedRow({
         {rank}
       </span>
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium" title={song.trackName}>
+      <Link href={`/queue/${song.jobId}`} className="group min-w-0 flex-1">
+        <p
+          className="truncate font-medium transition-colors group-hover:text-[color:var(--klr-hi)]"
+          title={song.trackName}
+        >
           {song.trackName}
         </p>
         <p
@@ -94,7 +79,7 @@ function WantedRow({
           {song.artistName}
           {song.albumName && <> · {song.albumName}</>}
         </p>
-      </div>
+      </Link>
 
       <div className="flex items-center gap-2.5">
         {song.trackId != null && (
@@ -105,7 +90,16 @@ function WantedRow({
             In the library
           </Link>
         )}
-        {song.videoUrl && (
+        {video ? (
+          <button
+            type="button"
+            onClick={() => setPreview((v) => !v)}
+            className="text-xs text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
+            title={song.videoUrl ?? undefined}
+          >
+            {preview ? "Hide preview" : video.platform === "spotify" ? "▶ Spotify" : "▶ YouTube"}
+          </button>
+        ) : song.videoUrl ? (
           <a
             href={song.videoUrl}
             target="_blank"
@@ -113,9 +107,9 @@ function WantedRow({
             className="text-xs text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
             title={song.videoUrl}
           >
-            {song.videoKey?.startsWith("sp:") ? "Spotify ↗" : "YouTube ↗"}
+            Listen ↗
           </a>
-        )}
+        ) : null}
 
         <span
           className="text-xs text-[color:var(--color-text-dim)]"
@@ -124,22 +118,52 @@ function WantedRow({
           {song.voters} {song.voters === 1 ? "want" : "wants"}
         </span>
 
-        {showVote && (
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={vote}
-            disabled={state !== "idle"}
-          >
-            {state === "done" ? "Counted" : state === "sending" ? "…" : "I want this"}
-          </button>
-        )}
+        {showVote && <QueueVoteButton jobId={song.jobId} nextPath="/queue" />}
       </div>
 
-      {error && (
-        <p className="w-full text-xs" style={{ color: "var(--klr-hi)" }}>
-          {error}
-        </p>
+      {preview && video && (
+        <div className="flex w-full flex-wrap gap-5 pl-10">
+          {video.platform === "youtube" ? (
+            <div className="relative aspect-video w-full max-w-md flex-none overflow-hidden rounded-xl border border-white/10">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${video.id}?rel=0`}
+                title={`YouTube — ${song.artistName} – ${song.trackName}`}
+                loading="lazy"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full"
+                style={{ border: 0 }}
+              />
+            </div>
+          ) : (
+            <div className="w-full max-w-md flex-none self-start overflow-hidden rounded-xl border border-white/10">
+              <iframe
+                src={`https://open.spotify.com/embed/track/${video.id}`}
+                title={`Spotify — ${song.artistName} – ${song.trackName}`}
+                width="100%"
+                height={152}
+                loading="lazy"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                className="block"
+                style={{ border: 0 }}
+              />
+            </div>
+          )}
+          {song.lyricsPreview && (
+            <div className="min-w-0 flex-1 basis-56">
+              <p className="klr-eyebrow mb-1.5 !text-[10px]">THE LYRICS SO FAR</p>
+              <p
+                className="whitespace-pre-line text-sm leading-relaxed text-[color:var(--color-text-muted)]"
+                style={{
+                  WebkitMaskImage: "linear-gradient(180deg, #000 55%, transparent)",
+                  maskImage: "linear-gradient(180deg, #000 55%, transparent)",
+                }}
+              >
+                {song.lyricsPreview.split("\n").slice(0, 8).join("\n")}
+              </p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

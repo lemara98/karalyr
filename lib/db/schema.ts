@@ -297,6 +297,31 @@ export const syncJobVotes = sqliteTable(
   ]
 );
 
+// Discussion on a queue candidate (a sync_jobs row). Same author model as
+// lyric_comments: shared Supabase accounts, display name snapshotted at post
+// time so later renames don't rewrite history. Comments are allowed on any
+// job status — talking about a rejected or finished request is legitimate.
+export const syncJobComments = sqliteTable(
+  "sync_job_comments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    jobId: integer("job_id")
+      .notNull()
+      .references(() => syncJobs.id),
+    body: text("body").notNull(),
+    // Shared Supabase account id (same project as karafilt.com).
+    authorUserId: text("author_user_id").notNull(),
+    authorName: text("author_name"),
+    createdAt: integer("created_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (t) => [
+    index("sync_job_comments_job_idx").on(t.jobId, t.createdAt),
+    index("sync_job_comments_author_idx").on(t.authorUserId),
+  ]
+);
+
 // Backing store for the rate limiters and the proof-of-work replay guard
 // (see lib/stores/kv.ts). These live in the database rather than in process
 // memory because both are only meaningful when every instance shares them:
@@ -324,3 +349,4 @@ export type TrackVideo = typeof trackVideos.$inferSelect;
 export type LyricComment = typeof lyricComments.$inferSelect;
 export type SyncJob = typeof syncJobs.$inferSelect;
 export type SyncJobVote = typeof syncJobVotes.$inferSelect;
+export type SyncJobComment = typeof syncJobComments.$inferSelect;

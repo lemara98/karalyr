@@ -1,15 +1,42 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getDb } from "@/lib/db/client";
-import { listMostWantedSongs } from "@/lib/db/queries";
+import { searchWantedSongs } from "@/lib/db/queries";
 import { WantedList } from "@/components/WantedList";
 
 export const dynamic = "force-dynamic";
 
-/** How many requests to show — the full backlog, not just the landing top 10. */
-const QUEUE_LIMIT = 100;
+export const metadata: Metadata = {
+  title: "The queue — Karalyr",
+  description: "Songs waiting for word-timed karaoke lyrics — search them, back them, discuss them.",
+};
 
-export default async function QueuePage() {
-  const wanted = await listMostWantedSongs(getDb(), QUEUE_LIMIT);
+const PER_PAGE = 20;
+
+/** /queue?q=...&page=N — omits defaults so bare /queue stays canonical. */
+function queueHref(q: string, page: number): string {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (page > 1) params.set("page", String(page));
+  const qs = params.toString();
+  return qs ? `/queue?${qs}` : "/queue";
+}
+
+export default async function QueuePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string }>;
+}) {
+  const sp = await searchParams;
+  const q = (sp.q ?? "").trim().slice(0, 200);
+  const requestedPage = Math.max(1, Math.floor(parseInt(sp.page ?? "1", 10)) || 1);
+
+  const { songs, total, page } = await searchWantedSongs(getDb(), {
+    q,
+    page: requestedPage,
+    perPage: PER_PAGE,
+  });
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
   return (
     <div className="mx-auto max-w-4xl space-y-12 px-6 py-10">
@@ -28,9 +55,35 @@ export default async function QueuePage() {
       </div>
 
       <section className="space-y-4">
+        <form action="/queue" className="flex flex-wrap items-center gap-2">
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            maxLength={200}
+            placeholder="Search by artist, title, album or a lyrics line…"
+            className="field !w-auto min-w-0 flex-1"
+          />
+          <button type="submit" className="btn btn-secondary btn-sm">
+            Search
+          </button>
+          {q && (
+            <Link
+              href="/queue"
+              className="text-sm text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
+            >
+              Clear ×
+            </Link>
+          )}
+        </form>
+
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-semibold">
-            {wanted.length > 0 ? `${wanted.length} waiting` : "Nothing waiting"}
+            {q
+              ? `${total} ${total === 1 ? "song matches" : "songs match"} “${q}”`
+              : total > 0
+                ? `${total} waiting`
+                : "Nothing waiting"}
           </h2>
           <Link
             href="/contribute"
@@ -39,7 +92,39 @@ export default async function QueuePage() {
             Request a song →
           </Link>
         </div>
-        <WantedList songs={wanted} />
+
+        {songs.length > 0 || !q ? (
+          <WantedList songs={songs} startRank={(page - 1) * PER_PAGE + 1} />
+        ) : (
+          <p className="text-sm text-[color:var(--color-text-muted)]">
+            No open requests match — try fewer words, or a line from the lyrics.
+          </p>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between gap-4 pt-2">
+            {page > 1 ? (
+              <Link href={queueHref(q, page - 1)} className="btn btn-secondary btn-sm">
+                ← Previous
+              </Link>
+            ) : (
+              <span />
+            )}
+            <span
+              className="text-xs text-[color:var(--color-text-dim)]"
+              style={{ fontFamily: "var(--font-mono)" }}
+            >
+              Page {page} of {totalPages}
+            </span>
+            {page < totalPages ? (
+              <Link href={queueHref(q, page + 1)} className="btn btn-secondary btn-sm">
+                Next →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </div>
+        )}
       </section>
 
       <section className="space-y-4">

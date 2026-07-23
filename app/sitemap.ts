@@ -22,6 +22,7 @@ const ROUTES: Array<{
   { path: "/docs", changeFrequency: "monthly", priority: 0.7 },
   { path: "/queue", changeFrequency: "weekly", priority: 0.6 },
   { path: "/sponsors", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/contributors", changeFrequency: "weekly", priority: 0.5 },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
