@@ -38,47 +38,34 @@ interface SyncSource {
   createdAt: number;
 }
 
-/** Inline player for a candidate — mounts the iframe only while open. */
+/** The candidate's player, always visible — the moderation list is short. */
 function JobEmbed({ videoKey, title }: { videoKey: string | null; title: string }) {
-  const [open, setOpen] = useState(false);
   const video = parseVideoKey(videoKey);
   if (!video) return null;
-  return (
-    <div className="mt-2">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="text-xs text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
-      >
-        {open ? "Hide player" : video.platform === "spotify" ? "▶ Play (Spotify)" : "▶ Play (YouTube)"}
-      </button>
-      {open &&
-        (video.platform === "youtube" ? (
-          <div className="relative mt-2 aspect-video w-full max-w-md overflow-hidden rounded-xl border border-white/10">
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${video.id}?rel=0`}
-              title={`YouTube — ${title}`}
-              loading="lazy"
-              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              className="absolute inset-0 h-full w-full"
-              style={{ border: 0 }}
-            />
-          </div>
-        ) : (
-          <div className="mt-2 w-full max-w-md overflow-hidden rounded-xl border border-white/10">
-            <iframe
-              src={`https://open.spotify.com/embed/track/${video.id}`}
-              title={`Spotify — ${title}`}
-              width="100%"
-              height={152}
-              loading="lazy"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              className="block"
-              style={{ border: 0 }}
-            />
-          </div>
-        ))}
+  return video.platform === "youtube" ? (
+    <div className="relative aspect-video w-full max-w-md flex-none overflow-hidden rounded-xl border border-white/10">
+      <iframe
+        src={`https://www.youtube-nocookie.com/embed/${video.id}?rel=0`}
+        title={`YouTube — ${title}`}
+        loading="lazy"
+        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        className="absolute inset-0 h-full w-full"
+        style={{ border: 0 }}
+      />
+    </div>
+  ) : (
+    <div className="w-full max-w-md flex-none self-start overflow-hidden rounded-xl border border-white/10">
+      <iframe
+        src={`https://open.spotify.com/embed/track/${video.id}`}
+        title={`Spotify — ${title}`}
+        width="100%"
+        height={152}
+        loading="lazy"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        className="block"
+        style={{ border: 0 }}
+      />
     </div>
   );
 }
@@ -209,6 +196,9 @@ export function AdminPanel() {
   const [syncRecent, setSyncRecent] = useState<SyncJob[] | null>(null);
   const [rejectTarget, setRejectTarget] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [editTarget, setEditTarget] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
   const loadSync = useCallback(async () => {
     const [wantedJobs, active, recent] = await Promise.all(
@@ -305,6 +295,28 @@ export function AdminPanel() {
     const body = await res.json().catch(() => ({}));
     setMessage(res.ok ? `Comment #${commentId} deleted` : body.message ?? "Delete failed");
     load();
+  }
+
+  async function saveLyricsEdit(jobId: number) {
+    setMessage(null);
+    setEditSaving(true);
+    const res = await fetch("/api/admin/sync-queue/edit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ job_id: jobId, lyrics: editText }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setEditSaving(false);
+    setMessage(
+      res.ok
+        ? `Sync job #${jobId}: lyrics corrected (${body.line_count} lines)`
+        : body.message ?? "Edit failed"
+    );
+    if (res.ok) {
+      setEditTarget(null);
+      setEditText("");
+    }
+    loadSync();
   }
 
   async function deleteJobComment(commentId: number) {
@@ -429,10 +441,10 @@ export function AdminPanel() {
                 <div className="min-w-0">
                   <a
                     href={`/queue/${j.id}`}
-                    className="font-medium hover:text-[color:var(--klr-hi)] hover:underline"
+                    className="font-medium text-[color:var(--klr-b)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
                     title="Open the candidate page — full lyrics, player, comments"
                   >
-                    {j.artist_name} — {j.track_name}
+                    {j.artist_name} — {j.track_name} →
                   </a>{" "}
                   <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[color:var(--klr-a)]">
                     {j.source}
@@ -517,6 +529,16 @@ export function AdminPanel() {
                       >
                         Reject
                       </button>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                          setEditTarget(editTarget === j.id ? null : j.id);
+                          setEditText(j.plain_lyrics);
+                        }}
+                        title="Correct the submitted lyrics before aligning"
+                      >
+                        {editTarget === j.id ? "Cancel edit" : "Edit lyrics"}
+                      </button>
                     </>
                   )}
                 </div>
@@ -537,27 +559,66 @@ export function AdminPanel() {
                   </span>
                 )}
               </p>
-              <JobEmbed videoKey={j.video_key} title={`${j.artist_name} — ${j.track_name}`} />
-              <details className="mt-2 text-xs">
-                <summary className="cursor-pointer text-[color:var(--color-text-dim)]">
-                  Lyrics preview ({j.line_count} lines)
-                </summary>
-                <div
-                  className="mt-1.5 rounded-xl border border-white/10 bg-black/20 p-2.5"
-                  style={{ fontFamily: "var(--font-mono)" }}
-                >
-                  {j.lyrics_preview.map((line, i) => (
-                    <p key={i} className="px-1 py-px">
-                      {line || " "}
+              {/* Player + lyrics side by side, always visible — the same
+                  at-a-glance layout the public queue previews use. The
+                  lyrics column swaps for the correction editor when open. */}
+              <div className="mt-3 flex flex-wrap gap-5">
+                <JobEmbed videoKey={j.video_key} title={`${j.artist_name} — ${j.track_name}`} />
+                {editTarget === j.id ? (
+                  <div className="min-w-0 flex-1 basis-56">
+                    <p className="klr-eyebrow mb-1.5 !text-[10px]">CORRECT THE LYRICS</p>
+                    <textarea
+                      className="field min-h-56 w-full"
+                      style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      disabled={editSaving}
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => saveLyricsEdit(j.id)}
+                        disabled={editSaving || editText.trim() === ""}
+                      >
+                        {editSaving ? "Saving…" : "Save correction"}
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                          setEditTarget(null);
+                          setEditText("");
+                        }}
+                        disabled={editSaving}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="min-w-0 flex-1 basis-56">
+                    <p className="klr-eyebrow mb-1.5 !text-[10px]">
+                      LYRICS PREVIEW ({j.line_count} lines)
                     </p>
-                  ))}
-                  {j.line_count > j.lyrics_preview.length && (
-                    <p className="px-1 py-px text-[color:var(--color-text-dim)]">
-                      … {j.line_count - j.lyrics_preview.length} more lines
+                    <p
+                      className="whitespace-pre-line text-sm leading-relaxed text-[color:var(--color-text-muted)]"
+                      style={{
+                        WebkitMaskImage: "linear-gradient(180deg, #000 60%, transparent)",
+                        maskImage: "linear-gradient(180deg, #000 60%, transparent)",
+                      }}
+                    >
+                      {j.lyrics_preview.join("\n")}
                     </p>
-                  )}
-                </div>
-              </details>
+                    <a
+                      href={`/queue/${j.id}`}
+                      className="text-xs text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
+                    >
+                      {j.line_count > j.lyrics_preview.length
+                        ? `All ${j.line_count} lines on the candidate page →`
+                        : "Open the candidate page →"}
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>

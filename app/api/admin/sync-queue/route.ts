@@ -32,6 +32,8 @@ function jobDto(j: SyncJob) {
     updated_at: j.updatedAt,
     lyrics_preview: lines.slice(0, 10),
     line_count: lines.length,
+    // Full text for the panel's correction editor (admin-only surface).
+    plain_lyrics: j.plainLyrics,
   };
 }
 

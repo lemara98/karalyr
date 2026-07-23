@@ -515,6 +515,42 @@ export async function listSyncJobs(
   return query.orderBy(...order).limit(limit);
 }
 
+export type EditLyricsResult =
+  | { ok: true; lineCount: number }
+  | { ok: false; reason: "bad_lyrics" | "not_editable" };
+
+/**
+ * Admin correction of a candidate's submitted lyrics — the text the aligner
+ * will read. Same normalization and bounds as intake. Guarded update, same
+ * as every other transition here: editable only while the job is waiting
+ * (a processing job belongs to its worker; closed jobs are history).
+ */
+export async function editJobLyrics(
+  db: Db,
+  jobId: number,
+  rawLyrics: string,
+  now: number
+): Promise<EditLyricsResult> {
+  const plainLyrics = stripToPlainLines(rawLyrics);
+  const lineCount = plainLyrics.split("\n").filter(Boolean).length;
+  if (plainLyrics.length > MAX_LYRICS_CHARS || lineCount < MIN_LYRIC_LINES) {
+    return { ok: false, reason: "bad_lyrics" };
+  }
+
+  const updated = await db
+    .update(syncJobs)
+    .set({ plainLyrics, updatedAt: now })
+    .where(
+      and(
+        eq(syncJobs.id, jobId),
+        inArray(syncJobs.status, ["wanted", "pending_approval", "queued"])
+      )
+    )
+    .returning({ id: syncJobs.id });
+  if (updated.length === 0) return { ok: false, reason: "not_editable" };
+  return { ok: true, lineCount };
+}
+
 /** Backpressure input for the intake routes' QueueFull valve. */
 export async function countQueuedJobs(db: Db): Promise<number> {
   const [row] = await db
