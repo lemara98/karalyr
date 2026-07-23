@@ -96,6 +96,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 The open karaoke lyrics database. Open source (MIT) and
                 non-commercial; imports credit LRCLIB.
               </p>
+              <a
+                href="https://betania.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex items-center gap-2 text-xs text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]"
+              >
+                {/* The Betania triangle mark, inlined from the karafilt site. */}
+                <svg viewBox="76 0 1000 868" fill="none" className="h-4 w-auto" aria-hidden="true">
+                  <path d="M1066.17 859H85.8291L575.999 9.99902L1066.17 859Z" stroke="#30D5C8" strokeWidth="10" />
+                  <path d="M960.515 798H191.485L576 132L960.515 798Z" stroke="#30D5C8" strokeWidth="7" />
+                  <path d="M861.789 741H290.211L576 245.999L861.789 741Z" stroke="#30D5C8" strokeWidth="3" />
+                  <path d="M435.704 495H716.296L576 738.001L435.704 495Z" stroke="#30D5C8" strokeWidth="3" />
+                </svg>
+                <span>
+                  Operated by <span className="font-semibold">Betania.io</span>
+                </span>
+              </a>
             </div>
             {FOOTER_COLS.map((col) => (
               <div key={col.title} className="flex flex-col gap-2.5">
@@ -114,7 +131,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <div className="border-t border-white/5 px-6 py-4">
             <p className="mx-auto max-w-6xl text-xs text-[color:var(--color-text-dim)]">
-              © 2026 Karalyr. A Karafilt sibling.
+              © 2026 Karalyr. A Karafilt sibling — developed by the community, operated by{" "}
+              <a
+                href="https://betania.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[color:var(--klr-b)] underline decoration-dotted underline-offset-2 hover:no-underline"
+              >
+                Betania.io
+              </a>
+              .
             </p>
           </div>
         </footer>
