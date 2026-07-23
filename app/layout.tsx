@@ -29,7 +29,6 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
       { label: "Library", href: "/library" },
       { label: "Studio", href: "/contribute" },
       { label: "API Docs", href: "/docs" },
-      { label: "Moderation", href: "/admin" },
     ],
   },
   {

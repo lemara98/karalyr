@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/app/login/actions";
 
-export type HeaderUser = { email: string } | null;
+export type HeaderUser = { email: string; isAdmin?: boolean } | null;
 
 /**
  * Header login-status element. The auth state itself is resolved server-side
@@ -29,11 +29,19 @@ export function HeaderAuthMenu({ user }: { user: HeaderUser }) {
     );
   }
 
-  return <UserMenu email={user.email} pathname={pathname} />;
+  return <UserMenu email={user.email} isAdmin={user.isAdmin ?? false} pathname={pathname} />;
 }
 
 /** Avatar chip + dropdown for the signed-in state. */
-function UserMenu({ email, pathname }: { email: string; pathname: string }) {
+function UserMenu({
+  email,
+  isAdmin,
+  pathname,
+}: {
+  email: string;
+  isAdmin: boolean;
+  pathname: string;
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -77,6 +85,16 @@ function UserMenu({ email, pathname }: { email: string; pathname: string }) {
             {email || "Signed in"}
           </p>
           <div className="my-1 border-t border-white/5" />
+          {isAdmin && (
+            <Link
+              href="/admin"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="block rounded-lg px-3 py-2 text-sm text-[color:var(--klr-hi)] transition-colors hover:bg-white/5 hover:text-[color:var(--color-text)]"
+            >
+              Admin panel
+            </Link>
+          )}
           <a
             href="https://karafilt.com/account"
             target="_blank"
