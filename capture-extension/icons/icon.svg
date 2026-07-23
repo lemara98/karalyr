@@ -1,16 +1,16 @@
-<!-- Source for the toolbar PNGs. Same mark as app/icon.svg; the viewBox is
-     widened to a square and centred on the glyph (content spans x 6..66,
-     y 6..80, so a 88x88 box at -8,-1 leaves an even margin) because Chrome
-     wants square icons and would otherwise letterbox it. Regenerate with:
+<!-- Source for the toolbar PNGs. Same framed mark as app/icon.svg: the
+     Karafilt-family tile (#1a1530, radius 56/256) with the lyric-line K
+     centred at the family proportions. Regenerate with:
        node capture-extension/icons/render.mjs -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -1 88 88">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#b46cff"/>
       <stop offset="100%" stop-color="#ff6b9d"/>
     </linearGradient>
   </defs>
-  <g fill="url(#g)">
+  <rect width="256" height="256" rx="56" fill="#1a1530"/>
+  <g transform="translate(62 49) scale(1.84)" fill="url(#g)">
     <rect x="6" y="6" width="12" height="8" rx="2"/>
     <rect x="50" y="6" width="16" height="8" rx="2"/>
     <rect x="6" y="17" width="12" height="8" rx="2"/>
