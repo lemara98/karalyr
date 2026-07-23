@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDb } from "@/lib/db/client";
 import { listTrackVideos } from "@/lib/db/queries";
@@ -87,10 +88,15 @@ export default async function TrackPage({
           )}
           <div className="flex flex-wrap items-start justify-between gap-4">
             <SignalButtons revisionId={best.id} />
-            <ExportButtons
-              payload={payload}
-              baseName={`${track.artistName} - ${track.trackName}`}
-            />
+            <div className="flex flex-wrap items-center gap-3">
+              <Link href={`/contribute?track=${track.id}`} className="btn btn-secondary btn-sm">
+                Fix these lyrics
+              </Link>
+              <ExportButtons
+                payload={payload}
+                baseName={`${track.artistName} - ${track.trackName}`}
+              />
+            </div>
           </div>
           <AnnotatedLyrics trackId={track.id} revisionId={best.id} payload={payload} />
         </>

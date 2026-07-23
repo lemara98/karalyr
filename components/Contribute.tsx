@@ -305,15 +305,33 @@ function RequestSync() {
   );
 }
 
-export function Contribute({ aiAlignEnabled = false }: { aiAlignEnabled?: boolean }) {
+/** Prefill for fixing an existing track: publishes a correction revision. */
+export interface ContributeInitial {
+  trackId: number;
+  artist: string;
+  title: string;
+  album: string;
+  duration: string;
+  /** The track's current best lyrics as (Enhanced) LRC text. */
+  raw: string;
+  parentRevisionId: number;
+}
+
+export function Contribute({
+  aiAlignEnabled = false,
+  initial,
+}: {
+  aiAlignEnabled?: boolean;
+  initial?: ContributeInitial;
+}) {
   const [mode, setMode] = useState<Mode>("paste");
-  const [artist, setArtist] = useState("");
-  const [title, setTitle] = useState("");
-  const [album, setAlbum] = useState("");
-  const [duration, setDuration] = useState("");
+  const [artist, setArtist] = useState(initial?.artist ?? "");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [album, setAlbum] = useState(initial?.album ?? "");
+  const [duration, setDuration] = useState(initial?.duration ?? "");
   const [videoUrl, setVideoUrl] = useState("");
 
-  const [raw, setRaw] = useState("");
+  const [raw, setRaw] = useState(initial?.raw ?? "");
   const [format, setFormat] = useState<ImportFormat | "auto">("auto");
   const [tapPayload, setTapPayload] = useState<LyricsPayload | null>(null);
   const [state, setState] = useState<PublishState>({ phase: "idle" });
@@ -372,6 +390,9 @@ export function Contribute({ aiAlignEnabled = false }: { aiAlignEnabled?: boolea
       } else {
         body.payload = tapPayload;
       }
+      // Editing an existing track: chain to the revision being corrected so
+      // the server records this as a correction, not a fresh submission.
+      if (initial) body.parent_revision_id = initial.parentRevisionId;
 
       const res = await fetch("/api/publish", {
         method: "POST",
