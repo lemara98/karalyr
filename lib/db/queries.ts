@@ -271,6 +271,129 @@ export async function listMostUsedTracks(db: Db, limit = 8): Promise<MostUsedTra
   }));
 }
 
+export interface LibraryTrack extends Track {
+  bestTier: Tier | null;
+  bestHasWordTiming: boolean;
+  /** Distinct people who signaled, listen-alonged, or commented on the track. */
+  singers: number;
+  /** Net rating on the best revision: ups + clean playthroughs − downs − reports. */
+  score: number;
+}
+
+/**
+ * The /library listing: every track with karaoke lyrics, the well-used and
+ * well-rated ones first. Usage is the same distinct-people measure as
+ * listMostUsedTracks; rating is the net vote balance on the track's best
+ * revision. Tracks with neither stay in the list (ranked below, newest
+ * first) so a young library still fills the page.
+ */
+export async function listLibraryTracks(db: Db, limit = 60): Promise<LibraryTrack[]> {
+  const rows = await db.all<{
+    id: number;
+    artist_name: string;
+    track_name: string;
+    album_name: string | null;
+    duration_seconds: number;
+    best_revision_id: number | null;
+    created_at: number;
+    best_tier: Tier | null;
+    best_has_words: number | null;
+    singers: number;
+    score: number;
+  }>(sql`
+    WITH usage_events AS (
+      SELECT r.track_id AS track_id, s.fingerprint AS who
+      FROM signals s
+      JOIN revisions r ON r.id = s.revision_id
+      UNION ALL
+      SELECT o.track_id, o.fingerprint FROM line_observations o
+      UNION ALL
+      SELECT c.track_id, 'user:' || c.author_user_id FROM lyric_comments c
+    ),
+    votes AS (
+      SELECT s.revision_id,
+        SUM(CASE
+          WHEN s.type IN ('explicit_up', 'clean_playthrough') THEN 1
+          WHEN s.type IN ('explicit_down', 'content_report') THEN -1
+          ELSE 0
+        END) AS score
+      FROM signals s
+      WHERE s.fingerprint NOT LIKE 'system:%'
+      GROUP BY s.revision_id
+    )
+    SELECT t.*, r.tier AS best_tier,
+      json_extract(r.payload, '$.meta.has_word_timing') AS best_has_words,
+      COUNT(DISTINCT u.who) AS singers,
+      COALESCE(v.score, 0) AS score
+    FROM tracks t
+    JOIN revisions r ON r.id = t.best_revision_id
+    LEFT JOIN usage_events u ON u.track_id = t.id AND u.who NOT LIKE 'system:%'
+    LEFT JOIN votes v ON v.revision_id = r.id
+    GROUP BY t.id
+    ORDER BY (COUNT(DISTINCT u.who) > 0 OR COALESCE(v.score, 0) > 0) DESC,
+      COALESCE(v.score, 0) DESC, COUNT(DISTINCT u.who) DESC,
+      t.created_at DESC, t.id DESC
+    LIMIT ${limit}
+  `);
+
+  return rows.map((r) => ({
+    id: r.id,
+    artistName: r.artist_name,
+    trackName: r.track_name,
+    albumName: r.album_name,
+    durationSeconds: r.duration_seconds,
+    bestRevisionId: r.best_revision_id,
+    createdAt: r.created_at,
+    bestTier: r.best_tier,
+    bestHasWordTiming: r.best_has_words === 1,
+    singers: r.singers,
+    score: r.score,
+  }));
+}
+
+export interface NewestSyncedTrack extends Track {
+  bestTier: Tier | null;
+  bestHasWordTiming: boolean;
+  /** When the track's current best revision was published. */
+  syncedAt: number;
+}
+
+/** Tracks whose karaoke lyrics arrived most recently — the /library carousel. */
+export async function listNewestSyncedTracks(db: Db, limit = 12): Promise<NewestSyncedTrack[]> {
+  const rows = await db.all<{
+    id: number;
+    artist_name: string;
+    track_name: string;
+    album_name: string | null;
+    duration_seconds: number;
+    best_revision_id: number | null;
+    created_at: number;
+    best_tier: Tier | null;
+    best_has_words: number | null;
+    synced_at: number;
+  }>(sql`
+    SELECT t.*, r.tier AS best_tier, r.created_at AS synced_at,
+      json_extract(r.payload, '$.meta.has_word_timing') AS best_has_words
+    FROM tracks t
+    JOIN revisions r ON r.id = t.best_revision_id
+    ORDER BY r.created_at DESC, r.id DESC
+    LIMIT ${limit}
+  `);
+
+  return rows.map((r) => ({
+    id: r.id,
+    artistName: r.artist_name,
+    trackName: r.track_name,
+    albumName: r.album_name,
+    durationSeconds: r.duration_seconds,
+    bestRevisionId: r.best_revision_id,
+    createdAt: r.created_at,
+    bestTier: r.best_tier,
+    bestHasWordTiming: r.best_has_words === 1,
+    syncedAt: r.synced_at,
+  }));
+}
+
 export interface NewLyricCommentInput {
   trackId: number;
   revisionId: number;

@@ -26,7 +26,7 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
   {
     title: "PRODUCT",
     links: [
-      { label: "Library", href: "/#library" },
+      { label: "Library", href: "/library" },
       { label: "Studio", href: "/contribute" },
       { label: "API Docs", href: "/docs" },
       { label: "Moderation", href: "/admin" },
@@ -35,16 +35,16 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
   {
     title: "FAMILY",
     links: [
-      { label: "Karafilt", href: "https://github.com/karalyr" },
-      { label: "Extension", href: "https://github.com/karalyr" },
+      { label: "Karafilt", href: "https://karafilt.com" },
+      { label: "Extension", href: "https://karafilt.com/install" },
     ],
   },
   {
     title: "COMMUNITY",
     links: [
-      { label: "GitHub", href: "https://github.com/karalyr/karalyr" },
+      { label: "GitHub", href: "https://github.com/lemara98/karalyr" },
       { label: "LRCLIB", href: "https://lrclib.net" },
-      { label: "Contributors", href: "/#library" },
+      { label: "Contributors", href: "/#contributors" },
     ],
   },
 ];
@@ -57,7 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
             <Logo />
             <nav className="hidden items-center gap-7 text-sm sm:flex">
-              <Link href="/#library" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
+              <Link href="/library" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
                 Library
               </Link>
               <Link href="/contribute" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
@@ -65,9 +65,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </Link>
               <Link href="/docs" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
                 Docs
-              </Link>
-              <Link href="/admin" className="text-[color:var(--color-text-dim)] transition-colors hover:text-[color:var(--color-text)]">
-                Admin
               </Link>
             </nav>
             <div className="flex items-center gap-3 sm:gap-4">

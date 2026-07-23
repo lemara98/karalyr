@@ -3,7 +3,7 @@ import { findOrCreateTrack, findTrack, insertRevision } from "../db/queries";
 import { parseEnhancedLrc, parseLrc, type LyricsPayload } from "../formats";
 import type { LazyImportParams } from "./queue";
 
-const USER_AGENT = "Karalyr/0.1.0 (https://github.com/karalyr/karalyr)";
+const USER_AGENT = "Karalyr/0.1.0 (https://github.com/lemara98/karalyr)";
 
 interface LrclibResponse {
   trackName: string;

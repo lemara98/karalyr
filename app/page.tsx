@@ -3,29 +3,17 @@ import { countDistinct, count, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { listMostUsedTracks, listMostWantedSongs } from "@/lib/db/queries";
 import { revisions, tracks } from "@/lib/db/schema";
+import { CONTRIBUTORS_URL, getContributors } from "@/lib/github";
+import { ContributorsGrid } from "@/components/ContributorsGrid";
 import { KaralyrMark } from "@/components/KaralyrMark";
 import { LyricsDemo } from "@/components/LyricsDemo";
 import { SearchBox } from "@/components/SearchBox";
+import { StatCard } from "@/components/StatCard";
 import { TierBadge } from "@/components/TierBadge";
 import { WantedList } from "@/components/WantedList";
 import { WordSyncBadge } from "@/components/WordSyncBadge";
 
 export const dynamic = "force-dynamic";
-
-function StatCard({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <div className="klr-card p-5">
-      <p className="klr-eyebrow !text-[11px]">{label}</p>
-      <p
-        className="mt-2 text-3xl font-bold tracking-[-0.02em]"
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        {value}
-      </p>
-      <p className="mt-1.5 text-[13px] text-[color:var(--color-text-muted)]">{hint}</p>
-    </div>
-  );
-}
 
 const FEATURES = [
   {
@@ -88,7 +76,7 @@ const STEPS = [
 
 export default async function HomePage() {
   const db = getDb();
-  const [[trackStats], [revisionStats], [lyricsStats], mostUsed, mostWanted] = await Promise.all([
+  const [[trackStats], [revisionStats], [lyricsStats], mostUsed, mostWanted, contributors] = await Promise.all([
     db.select({ n: count() }).from(tracks),
     db
       .select({
@@ -100,6 +88,7 @@ export default async function HomePage() {
     db.select({ n: count() }).from(tracks).where(isNotNull(tracks.bestRevisionId)),
     listMostUsedTracks(db),
     listMostWantedSongs(db, 10),
+    getContributors(),
   ]);
 
   return (
@@ -300,6 +289,36 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Community: GitHub contributors, the same section karafilt.com has */}
+      {contributors.length > 0 && (
+        <section id="contributors" className="scroll-mt-6 border-t border-white/5">
+          <div className="mx-auto max-w-6xl px-6 py-16">
+            <p className="klr-eyebrow">THE COMMUNITY</p>
+            <h2
+              className="mb-3 mt-2.5 text-[32px] font-bold tracking-[-0.02em]"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Thanks to our community
+            </h2>
+            <p className="mb-7 text-[15px] text-[color:var(--color-text-muted)]">
+              Karalyr is open source and kept alive by the people who build it.
+            </p>
+            <div className="mb-4 flex items-baseline justify-between gap-4">
+              <h3 className="text-lg font-semibold">Contributors</h3>
+              <a
+                href={CONTRIBUTORS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-[color:var(--klr-b)] transition-colors hover:text-[color:var(--color-text)]"
+              >
+                See all contributors →
+              </a>
+            </div>
+            <ContributorsGrid contributors={contributors} limit={8} />
+          </div>
+        </section>
+      )}
 
       {/* CTA */}
       <section className="relative overflow-hidden border-t border-white/5">

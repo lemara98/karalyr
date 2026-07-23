@@ -2,7 +2,7 @@
 
 An open-source, LRCLIB-style lyrics database purpose-built for **karaoke**:
 word-level timed lyrics, community corrections, and an open JSON API. Karalyr
-is the data backbone for [Karafilt](https://github.com/karalyr) (real-time
+is the data backbone for [Karafilt](https://karafilt.com) (real-time
 vocal removal + synced lyrics in the browser). Non-commercial, MIT-licensed.
 
 Why not just LRCLIB? LRCLIB is line-level and has no correction loop. Karaoke
