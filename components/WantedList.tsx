@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import type { WantedSong } from "@/lib/db/queries";
 import { parseVideoKey } from "@/lib/video-key";
 import { QueueVoteButton } from "./QueueVoteButton";
@@ -51,9 +50,8 @@ function WantedRow({
   rank: number;
   showVote: boolean;
 }) {
-  // The player mounts only while open, so a 100-row queue doesn't load a
-  // hundred iframes up front.
-  const [preview, setPreview] = useState(false);
+  // Always show the player when a song has one; loading="lazy" keeps
+  // below-the-fold rows from fetching their iframes until scrolled to.
   const video = parseVideoKey(song.videoKey);
 
   return (
@@ -90,16 +88,7 @@ function WantedRow({
             In the library
           </Link>
         )}
-        {video ? (
-          <button
-            type="button"
-            onClick={() => setPreview((v) => !v)}
-            className="text-xs text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
-            title={song.videoUrl ?? undefined}
-          >
-            {preview ? "Hide preview" : video.platform === "spotify" ? "▶ Spotify" : "▶ YouTube"}
-          </button>
-        ) : song.videoUrl ? (
+        {!video && song.videoUrl ? (
           <a
             href={song.videoUrl}
             target="_blank"
@@ -121,7 +110,7 @@ function WantedRow({
         {showVote && <QueueVoteButton jobId={song.jobId} nextPath="/queue" />}
       </div>
 
-      {preview && video && (
+      {video && (
         <div className="flex w-full flex-wrap gap-5 pl-10">
           {video.platform === "youtube" ? (
             <div className="relative aspect-video w-full max-w-md flex-none overflow-hidden rounded-xl border border-white/10">
