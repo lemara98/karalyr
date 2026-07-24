@@ -16,13 +16,14 @@ export function HeaderAuthMenu({ user }: { user: HeaderUser }) {
 
   if (!user) {
     // Send the visitor back where they were after signing in — but never
-    // emit a self-referential next=/login.
+    // emit a self-referential next=/login. Hidden below `sm`: the mobile
+    // burger menu carries its own Sign in entry.
     const href =
       pathname === "/login" ? "/login" : `/login?next=${encodeURIComponent(pathname)}`;
     return (
       <Link
         href={href}
-        className="text-sm text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]"
+        className="hidden whitespace-nowrap text-sm text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)] sm:inline"
       >
         Sign in
       </Link>

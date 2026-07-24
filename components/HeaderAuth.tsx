@@ -1,4 +1,5 @@
 import { HeaderAuthMenu, type HeaderUser } from "@/components/HeaderAuthMenu";
+import { MobileMenu, type NavLink } from "@/components/MobileMenu";
 import { isAdminUser } from "@/lib/admin";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
@@ -8,7 +9,9 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 // accepted, since middleware already runs auth.getUser() on every request.
 // Admin status rides along so the dropdown can offer the moderation page;
 // it is presentation only — every /admin surface re-checks for itself.
-export async function HeaderAuth() {
+// The mobile burger menu renders here too, so it can share the resolved
+// user without a second auth round-trip.
+export async function HeaderAuth({ navLinks }: { navLinks: NavLink[] }) {
   let user: HeaderUser = null;
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
@@ -20,5 +23,10 @@ export async function HeaderAuth() {
       };
     }
   }
-  return <HeaderAuthMenu user={user} />;
+  return (
+    <>
+      <HeaderAuthMenu user={user} />
+      <MobileMenu links={navLinks} signedIn={user !== null} />
+    </>
+  );
 }

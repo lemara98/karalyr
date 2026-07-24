@@ -5,6 +5,7 @@ import { Geist_Mono, Space_Grotesk } from "next/font/google";
 import { Logo } from "@/components/Logo";
 import { KaralyrMark } from "@/components/KaralyrMark";
 import { HeaderAuth } from "@/components/HeaderAuth";
+import { type NavLink } from "@/components/MobileMenu";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -21,6 +22,15 @@ export const metadata: Metadata = {
   description:
     "The open karaoke lyrics database: word-level timed lyrics, community corrections, and a free LRCLIB-compatible API. A Karafilt sibling.",
 };
+
+const NAV_LINKS: NavLink[] = [
+  { label: "Library", href: "/library" },
+  { label: "Studio", href: "/contribute" },
+  { label: "Queue", href: "/queue" },
+  { label: "Docs", href: "/docs" },
+  { label: "Sponsors", href: "/sponsors" },
+  { label: "Contributors", href: "/contributors" },
+];
 
 const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[] = [
   {
@@ -58,30 +68,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
             <Logo />
             <nav className="hidden items-center gap-7 text-sm sm:flex">
-              <Link href="/library" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
-                Library
-              </Link>
-              <Link href="/contribute" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
-                Studio
-              </Link>
-              <Link href="/queue" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
-                Queue
-              </Link>
-              <Link href="/docs" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
-                Docs
-              </Link>
-              <Link href="/sponsors" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
-                Sponsors
-              </Link>
-              <Link href="/contributors" className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]">
-                Contributors
-              </Link>
+              {NAV_LINKS.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className="text-[color:var(--color-text-muted)] transition-colors hover:text-[color:var(--color-text)]"
+                >
+                  {l.label}
+                </Link>
+              ))}
             </nav>
             <div className="flex items-center gap-3 sm:gap-4">
               <Link href="/contribute" className="btn btn-primary btn-sm">
                 Open Studio
               </Link>
-              <HeaderAuth />
+              <HeaderAuth navLinks={NAV_LINKS} />
             </div>
           </div>
         </header>
