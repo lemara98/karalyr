@@ -55,7 +55,6 @@ Set these for **Production** (Project → Settings → Environment Variables):
 | `NEXT_PUBLIC_SUPABASE_URL` | same Supabase project as karafilt.com |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public by design |
 | `POW_DIFFICULTY` | `19` |
-| `LRCLIB_BASE_URL` | `https://lrclib.net` |
 
 Three that matter more than the rest:
 

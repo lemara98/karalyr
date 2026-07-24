@@ -1,4 +1,3 @@
-import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { findTrack, findTrackByVideo } from "@/lib/db/queries";
@@ -6,7 +5,6 @@ import { revisions } from "@/lib/db/schema";
 import { apiError, corsOptions, json } from "@/lib/api-helpers";
 import { trackResponse } from "@/lib/lrclib-compat";
 import { deriveVideoKey } from "@/lib/video-key";
-import { getJobQueue } from "@/lib/lazy-import/in-process";
 
 export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
@@ -49,14 +47,9 @@ export async function GET(req: Request) {
     if (best) return json(trackResponse(track, best));
   }
 
-  // Miss: answer immediately, then try to import from LRCLIB in the
-  // background so the next identical request can hit. (Needs names — a
-  // video-only miss has nothing to ask LRCLIB for.)
-  if (artistName && trackName) {
-    after(() => {
-      getJobQueue().enqueueLrclibImport({ artistName, trackName, albumName, durationSeconds });
-    });
-  }
+  // Miss: Karalyr only serves word-synced lyrics, so there is nothing to
+  // fall back to here — clients own their own fallback chain (e.g. LRCLIB)
+  // and can request a sync via the wanted queue.
   return apiError(404, "TrackNotFound", "Failed to find specified track");
 }
 
