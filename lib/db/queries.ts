@@ -215,17 +215,17 @@ export async function listRevisions(db: Db, trackId: number): Promise<Revision[]
 export interface MostUsedTrack extends Track {
   bestTier: Tier | null;
   bestHasWordTiming: boolean;
-  /** Distinct people who signaled, listen-alonged, or commented on the track. */
+  /** Distinct people who signaled or commented on the track. */
   singers: number;
 }
 
 /**
  * Tracks with karaoke lyrics, ranked by how much they are actually used —
  * derived from the usage data we already store rather than a play counter:
- * every vote/report signal, listen-along line observation, and lyric comment
- * counts its author once (distinct fingerprints / user ids; system
- * fingerprints excluded). Ties break by raw event volume, then newest track,
- * so a fresh library still renders a sensible list.
+ * every vote/report signal and lyric comment counts its author once
+ * (distinct fingerprints / user ids; system fingerprints excluded). Ties
+ * break by raw event volume, then newest track, so a fresh library still
+ * renders a sensible list.
  */
 export async function listMostUsedTracks(db: Db, limit = 8): Promise<MostUsedTrack[]> {
   const rows = await db.all<{
@@ -244,8 +244,6 @@ export async function listMostUsedTracks(db: Db, limit = 8): Promise<MostUsedTra
       SELECT r.track_id AS track_id, s.fingerprint AS who
       FROM signals s
       JOIN revisions r ON r.id = s.revision_id
-      UNION ALL
-      SELECT o.track_id, o.fingerprint FROM line_observations o
       UNION ALL
       SELECT c.track_id, 'user:' || c.author_user_id FROM lyric_comments c
     )
@@ -278,7 +276,7 @@ export async function listMostUsedTracks(db: Db, limit = 8): Promise<MostUsedTra
 export interface LibraryTrack extends Track {
   bestTier: Tier | null;
   bestHasWordTiming: boolean;
-  /** Distinct people who signaled, listen-alonged, or commented on the track. */
+  /** Distinct people who signaled or commented on the track. */
   singers: number;
   /** Net rating on the best revision: ups + clean playthroughs − downs − reports. */
   score: number;
@@ -309,8 +307,6 @@ export async function listLibraryTracks(db: Db, limit = 60): Promise<LibraryTrac
       SELECT r.track_id AS track_id, s.fingerprint AS who
       FROM signals s
       JOIN revisions r ON r.id = s.revision_id
-      UNION ALL
-      SELECT o.track_id, o.fingerprint FROM line_observations o
       UNION ALL
       SELECT c.track_id, 'user:' || c.author_user_id FROM lyric_comments c
     ),

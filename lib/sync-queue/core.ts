@@ -261,8 +261,8 @@ async function recordVote(
 
 /**
  * Close every open request for a track that just gained word-timed lyrics,
- * whichever path produced them (worker import, local align, or crowd
- * listen-along stitching). Leaves "processing" alone — a worker owns that row
+ * whichever path produced them (worker import, local align, or a direct
+ * upload). Leaves "processing" alone — a worker owns that row
  * and reports its own outcome. Returns how many were closed.
  */
 export async function resolveWantedForTrack(

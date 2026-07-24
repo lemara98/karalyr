@@ -13,7 +13,7 @@ describe("Rule A: tier promotion", () => {
   it("promotes one tier at exactly 3 distinct positive fingerprints", async () => {
     const db = await makeDb();
     const track = await makeTrack(db);
-    const rev = await makeRevision(db, track.id, { tier: "imported" });
+    const rev = await makeRevision(db, track.id, { tier: "auto_aligned" });
 
     await makeSignal(db, rev.id, { fingerprint: "a", createdAt: NOW - 100 });
     await makeSignal(db, rev.id, { fingerprint: "b", type: "clean_playthrough", createdAt: NOW - 90 });
@@ -23,14 +23,14 @@ describe("Rule A: tier promotion", () => {
     expect((await runPromotionChecks(db, rev.id, NOW)).promoted).toBe(true);
 
     const [after] = await db.select().from(revisions).where(eq(revisions.id, rev.id));
-    expect(after.tier).toBe("auto_aligned");
+    expect(after.tier).toBe("community");
     expect(after.promotedAt).toBe(NOW);
   });
 
   it("does not double-count one fingerprint and does not re-promote on old signals", async () => {
     const db = await makeDb();
     const track = await makeTrack(db);
-    const rev = await makeRevision(db, track.id, { tier: "imported" });
+    const rev = await makeRevision(db, track.id, { tier: "auto_aligned" });
 
     for (let i = 0; i < 5; i++) {
       await makeSignal(db, rev.id, { fingerprint: "same", createdAt: NOW - 100 + i });
@@ -44,7 +44,7 @@ describe("Rule A: tier promotion", () => {
     // Same signals must not trigger a second promotion.
     expect((await runPromotionChecks(db, rev.id, NOW + 10)).promoted).toBe(false);
     const [after] = await db.select().from(revisions).where(eq(revisions.id, rev.id));
-    expect(after.tier).toBe("auto_aligned");
+    expect(after.tier).toBe("community");
   });
 
   it("blocks promotion when a down arrived within 7 days", async () => {

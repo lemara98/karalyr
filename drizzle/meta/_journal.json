@@ -71,6 +71,13 @@
       "when": 1784842612015,
       "tag": "0009_sync_job_comments",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1784886116230,
+      "tag": "0010_past_taskmaster",
+      "breakpoints": true
     }
   ]
 }

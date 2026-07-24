@@ -9,7 +9,6 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 export const SOURCES = [
-  "lrclib_import",
   "auto_aligned",
   "user_submission",
   "ultrastar_import",
@@ -17,13 +16,12 @@ export const SOURCES = [
 ] as const;
 export type Source = (typeof SOURCES)[number];
 
-export const TIERS = ["imported", "auto_aligned", "community", "verified"] as const;
+export const TIERS = ["auto_aligned", "community", "verified"] as const;
 export type Tier = (typeof TIERS)[number];
 export const TIER_RANK: Record<Tier, number> = {
-  imported: 0,
-  auto_aligned: 1,
-  community: 2,
-  verified: 3,
+  auto_aligned: 0,
+  community: 1,
+  verified: 2,
 };
 
 export const STATUSES = ["active", "pending_review", "rejected", "reverted"] as const;
@@ -99,31 +97,6 @@ export const signals = sqliteTable(
       .default(sql`(unixepoch() * 1000)`),
   },
   (t) => [index("signals_revision_type_idx").on(t.revisionId, t.type)]
-);
-
-// Per-line word-timing observations from listen-along clients (the Karafilt
-// extension aligns lines while users play songs and submits fragments here).
-// Aggregated into auto_aligned revisions by lib/stitch.ts once coverage is
-// good enough — see /api/observe.
-export const lineObservations = sqliteTable(
-  "line_observations",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    trackId: integer("track_id")
-      .notNull()
-      .references(() => tracks.id),
-    // Anchor: the line's start time in the base line-level revision.
-    lineStartMs: integer("line_start_ms").notNull(),
-    lineText: text("line_text").notNull(),
-    // JSON array of {text, start_ms, end_ms}
-    wordsJson: text("words_json").notNull(),
-    confidence: real("confidence").notNull(),
-    fingerprint: text("fingerprint").notNull(),
-    createdAt: integer("created_at")
-      .notNull()
-      .default(sql`(unixepoch() * 1000)`),
-  },
-  (t) => [index("line_observations_track_idx").on(t.trackId, t.lineStartMs)]
 );
 
 // External video → track mapping ("yt:<videoId>" keys, see lib/video-key.ts).
@@ -209,8 +182,8 @@ export const SYNC_JOB_ACTIVE_STATUSES = [
 // intake lands as "wanted"; only an admin promotes one to "queued", which is
 // the only status the pull worker can claim. That split is deliberate: it
 // keeps the public path from ever triggering a fetch, and lets a want be
-// fulfilled any way at all — crowd listen-along alignment (lib/stitch.ts), a
-// local aligner run, or an upload.
+// fulfilled any way at all — a local aligner run, the pull worker, or an
+// upload.
 export const syncJobs = sqliteTable(
   "sync_jobs",
   {
@@ -344,7 +317,6 @@ export const kvEntries = sqliteTable(
 export type Track = typeof tracks.$inferSelect;
 export type Revision = typeof revisions.$inferSelect;
 export type Signal = typeof signals.$inferSelect;
-export type LineObservation = typeof lineObservations.$inferSelect;
 export type TrackVideo = typeof trackVideos.$inferSelect;
 export type LyricComment = typeof lyricComments.$inferSelect;
 export type SyncJob = typeof syncJobs.$inferSelect;

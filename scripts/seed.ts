@@ -8,33 +8,31 @@ const db = getDb();
 const now = Date.now();
 const HOUR = 60 * 60 * 1000;
 
-/** Build evenly timed lines (with word timing) from plain text. */
+/** Build evenly timed, word-synced lines from plain text. */
 function timedPayload(
   lyricLines: (string | { text: string; singer?: "P1" | "P2" | "BOTH" })[],
-  opts: { startMs?: number; lineMs?: number; words?: boolean } = {}
+  opts: { startMs?: number; lineMs?: number } = {}
 ): LyricsPayload {
-  const { startMs = 4000, lineMs = 4000, words = true } = opts;
+  const { startMs = 4000, lineMs = 4000 } = opts;
   const lines: Line[] = lyricLines.map((entry, i) => {
     const text = typeof entry === "string" ? entry : entry.text;
     const singer = typeof entry === "string" ? null : entry.singer ?? null;
     const start = startMs + i * lineMs;
     const end = start + lineMs - 400;
     const line: Line = { start_ms: start, end_ms: end, singer, text };
-    if (words) {
-      const parts = text.split(" ").filter(Boolean);
-      const per = Math.floor((end - start) / Math.max(parts.length, 1));
-      line.words = parts.map((w, j) => ({
-        text: w,
-        start_ms: start + j * per,
-        end_ms: j + 1 === parts.length ? end : start + (j + 1) * per,
-      }));
-    }
+    const parts = text.split(" ").filter(Boolean);
+    const per = Math.floor((end - start) / Math.max(parts.length, 1));
+    line.words = parts.map((w, j) => ({
+      text: w,
+      start_ms: start + j * per,
+      end_ms: j + 1 === parts.length ? end : start + (j + 1) * per,
+    }));
     return line;
   });
   return {
     format_version: 1,
     lines,
-    meta: { language: "en", has_word_timing: words, countdown_lines: [] },
+    meta: { language: "en", has_word_timing: true, countdown_lines: [] },
   };
 }
 
@@ -47,7 +45,7 @@ async function main() {
 
   // All lyrics below are original placeholder verses written for testing.
 
-  // 1. Line-level only, imported tier (looks like an LRCLIB import).
+  // 1. Basic word-level community submission.
   const [t1] = await db.insert(tracks).values({
     artistName: "The Placeholder Trio",
     trackName: "Counting Streetlights",
@@ -57,20 +55,17 @@ async function main() {
   }).returning();
   await db.insert(revisions).values({
     trackId: t1.id,
-    source: "lrclib_import",
-    tier: "imported",
+    source: "user_submission",
+    tier: "community",
     payload: JSON.stringify(
-      timedPayload(
-        [
-          "Counting streetlights on the way back home",
-          "Every second one is burning low",
-          "I keep time with cracks along the road",
-          "Humming songs that nobody wrote",
-        ],
-        { words: false }
-      )
+      timedPayload([
+        "Counting streetlights on the way back home",
+        "Every second one is burning low",
+        "I keep time with cracks along the road",
+        "Humming songs that nobody wrote",
+      ])
     ),
-    submitterFingerprint: "seed:lrclib",
+    submitterFingerprint: "seed:user-0",
     status: "active",
     createdAt: now - 40 * HOUR,
   });
@@ -188,10 +183,10 @@ async function main() {
   ];
   const [t5v1] = await db.insert(revisions).values({
     trackId: t5.id,
-    source: "lrclib_import",
-    tier: "imported",
-    payload: JSON.stringify(timedPayload(t5lines, { words: false })),
-    submitterFingerprint: "seed:lrclib",
+    source: "auto_aligned",
+    tier: "auto_aligned",
+    payload: JSON.stringify(timedPayload(t5lines)),
+    submitterFingerprint: "seed:auto",
     status: "active",
     createdAt: now - 15 * HOUR,
   }).returning();
@@ -253,7 +248,7 @@ async function main() {
     { revisionId: t6rev.id, type: "offset_correction", value: 220, fingerprint: "seed:fan-7", createdAt: now - 5 * HOUR },
   ]);
 
-  // 7. Plain short track, no album, line-level.
+  // 7. Plain short track, no album.
   const [t7] = await db.insert(tracks).values({
     artistName: "Lone Variable",
     trackName: "Null Island",
@@ -266,15 +261,12 @@ async function main() {
     source: "user_submission",
     tier: "community",
     payload: JSON.stringify(
-      timedPayload(
-        [
-          "Meet me down at Null Island",
-          "Zero north and zero east",
-          "Where undefined can hold my hand",
-          "And missing values rest in peace",
-        ],
-        { words: false }
-      )
+      timedPayload([
+        "Meet me down at Null Island",
+        "Zero north and zero east",
+        "Where undefined can hold my hand",
+        "And missing values rest in peace",
+      ])
     ),
     submitterFingerprint: "seed:user-7",
     status: "active",

@@ -1,7 +1,6 @@
 import type { Tier } from "@/lib/db/schema";
 
 const STYLES: Record<Tier, string> = {
-  imported: "border-white/15 bg-white/5 text-[color:var(--color-text-muted)]",
   auto_aligned: "border-sky-400/30 bg-sky-400/10 text-sky-300",
   community:
     "border-[color:color-mix(in_srgb,var(--klr-a)_40%,transparent)] bg-[color:color-mix(in_srgb,var(--klr-a)_12%,transparent)] text-[color:#cfa8ff]",
@@ -10,7 +9,6 @@ const STYLES: Record<Tier, string> = {
 };
 
 const LABELS: Record<Tier, string> = {
-  imported: "imported",
   auto_aligned: "auto-aligned",
   community: "community",
   verified: "verified",

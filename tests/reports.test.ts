@@ -34,7 +34,7 @@ describe("content_report signal", () => {
   it("blocks tier promotion while a content_report is recent, then allows it after the window", async () => {
     const db = await makeDb();
     const track = await makeTrack(db);
-    const rev = await makeRevision(db, track.id, { tier: "imported" });
+    const rev = await makeRevision(db, track.id, { tier: "auto_aligned" });
 
     for (const fp of ["a", "b", "c"]) {
       await makeSignal(db, rev.id, { fingerprint: fp, createdAt: NOW - 100 });
@@ -49,12 +49,12 @@ describe("content_report signal", () => {
     // 3 positives are present, but the recent report holds promotion back.
     expect((await runPromotionChecks(db, rev.id, NOW)).promoted).toBe(false);
     const [blocked] = await db.select().from(revisions).where(eq(revisions.id, rev.id));
-    expect(blocked.tier).toBe("imported");
+    expect(blocked.tier).toBe("auto_aligned");
 
     // Once the report ages past the 7-day window, promotion proceeds.
     const later = NOW + RECENT_DOWN_WINDOW_MS + 1;
     expect((await runPromotionChecks(db, rev.id, later)).promoted).toBe(true);
     const [promoted] = await db.select().from(revisions).where(eq(revisions.id, rev.id));
-    expect(promoted.tier).toBe("auto_aligned");
+    expect(promoted.tier).toBe("community");
   });
 });
