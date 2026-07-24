@@ -8,7 +8,13 @@ import {
   type LibraryTrack,
   type NewestSyncedTrack,
 } from "@/lib/db/queries";
-import { revisions, tracks, trackVideos } from "@/lib/db/schema";
+import {
+  revisions,
+  SYNC_JOB_ACTIVE_STATUSES,
+  syncJobs,
+  tracks,
+  trackVideos,
+} from "@/lib/db/schema";
 import { parseVideoKey } from "@/lib/video-key";
 import { SearchBox } from "@/components/SearchBox";
 import { StatCard } from "@/components/StatCard";
@@ -127,16 +133,15 @@ function CarouselCard({ track, hidden }: { track: NewestSyncedTrack; hidden?: bo
 
 export default async function LibraryPage() {
   const db = getDb();
-  const [[trackStats], [readyStats], [revisionStats], [wordSynced], newest, ranked] =
+  const [[trackStats], [readyStats], [revisionStats], [wantedStats], newest, ranked] =
     await Promise.all([
       db.select({ n: count() }).from(tracks),
       db.select({ n: count() }).from(tracks).where(isNotNull(tracks.bestRevisionId)),
       db.select({ n: count() }).from(revisions),
-      db.all<{ n: number }>(sql`
-        SELECT COUNT(*) AS n FROM tracks t
-        JOIN revisions r ON r.id = t.best_revision_id
-        WHERE json_extract(r.payload, '$.meta.has_word_timing') = 1
-      `),
+      db
+        .select({ n: count() })
+        .from(syncJobs)
+        .where(inArray(syncJobs.status, [...SYNC_JOB_ACTIVE_STATUSES])),
       listNewestSyncedTracks(db, 12),
       listLibraryTracks(db, 60),
     ]);
@@ -211,12 +216,12 @@ export default async function LibraryPage() {
             <StatCard
               label="READY TO SING"
               value={readyStats.n.toLocaleString("en-US")}
-              hint="Tracks with published karaoke lyrics"
+              hint="Word-synced karaoke lyrics"
             />
             <StatCard
-              label="WORD-SYNCED"
-              value={(wordSynced?.n ?? 0).toLocaleString("en-US")}
-              hint="Lyrics timed word by word"
+              label="SONGS WANTED"
+              value={wantedStats.n.toLocaleString("en-US")}
+              hint="Requests waiting in the wanted queue"
             />
             <StatCard
               label="LYRIC REVISIONS"
