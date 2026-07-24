@@ -64,15 +64,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return apiError(400, "MissingDuration", "No duration on the job or in meta");
   }
 
-  const imported = await importAlignedPayload(db, {
-    payload,
-    artist,
-    track,
-    album: job.albumName,
-    duration,
-    videoUrl: job.videoUrl,
-    submitterFingerprint: "system:sync-queue",
-  });
+  let imported;
+  try {
+    imported = await importAlignedPayload(db, {
+      payload,
+      artist,
+      track,
+      album: job.albumName,
+      duration,
+      videoUrl: job.videoUrl,
+      submitterFingerprint: "system:sync-queue",
+    });
+  } catch (err) {
+    // Word-timing guard: a line-level payload is a failed alignment; the 400
+    // makes the daemon issue a permanent /fail for this job.
+    if (err instanceof FormatError) return apiError(400, "InvalidPayload", err.message);
+    throw err;
+  }
 
   // Lease lost mid-import: the revision already landed and stays — aligned
   // lyrics are worth keeping regardless of queue bookkeeping. The 409 only

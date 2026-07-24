@@ -59,6 +59,9 @@ async function checkTierPromotion(
   now: number
 ): Promise<boolean> {
   if (revision.tier === "verified") return false;
+  // Legacy tiers no longer in the enum (e.g. "imported" rows awaiting
+  // cleanup) have no defined next rung — never promote them.
+  if (!(revision.tier in TIER_RANK)) return false;
 
   const since = revision.promotedAt ?? 0;
   const positiveFingerprints = new Set(

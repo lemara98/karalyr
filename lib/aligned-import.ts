@@ -1,6 +1,6 @@
 import type { Db } from "./db/client";
 import { findOrCreateTrack, insertRevision, linkTrackVideo } from "./db/queries";
-import type { LyricsPayload } from "./formats";
+import { FormatError, type LyricsPayload } from "./formats";
 import type { Revision } from "./db/schema";
 import { resolveWantedForTrack } from "./sync-queue/core";
 import { deriveVideoKey } from "./video-key";
@@ -34,6 +34,11 @@ export async function importAlignedPayload(
   db: Db,
   input: AlignedImportInput
 ): Promise<AlignedImportResult> {
+  // Karalyr stores word/syllable-synced lyrics only; an aligner run that
+  // produced no word timing has failed, whatever its exit code said.
+  if (!input.payload.meta.has_word_timing) {
+    throw new FormatError("Aligned payload has no word timing — refusing to import");
+  }
   const track = await findOrCreateTrack(db, {
     artistName: input.artist,
     trackName: input.track,

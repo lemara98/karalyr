@@ -75,6 +75,13 @@ export async function POST(req: Request) {
   if (payload.lines.length === 0) {
     return apiError(400, "BadRequest", "Lyrics payload has no lines");
   }
+  if (!payload.meta.has_word_timing) {
+    return apiError(
+      400,
+      "WordTimingRequired",
+      "Karalyr only stores word/syllable-synced lyrics. Submit Enhanced LRC with <mm:ss.xx> word tags or UltraStar; for plain lyrics, request a sync in the wanted queue instead."
+    );
+  }
 
   const db = getDb();
   const track = await findOrCreateTrack(db, {

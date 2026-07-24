@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { netScore, rankRevisions, computeBestRevision } from "@/lib/ranking";
 import { tracks, type Revision, type Signal } from "@/lib/db/schema";
-import { makeDb, makeRevision, makeSignal, makeTrack } from "./helpers";
+import { makeDb, makeRevision, makeSignal, makeTrack, samplePayload } from "./helpers";
 import { eq } from "drizzle-orm";
+
+/** samplePayload with word timing stripped — the line-level legacy shape. */
+function lineLevelPayload(): string {
+  const p = samplePayload();
+  return JSON.stringify({
+    ...p,
+    lines: p.lines.map(({ words: _words, ...line }) => line),
+    meta: { ...p.meta, has_word_timing: false },
+  });
+}
 
 let nextId = 1;
 function rev(overrides: Partial<Revision>): Revision {
@@ -11,7 +21,7 @@ function rev(overrides: Partial<Revision>): Revision {
     trackId: 1,
     source: "user_submission",
     tier: "community",
-    payload: "{}",
+    payload: JSON.stringify(samplePayload()),
     parentRevisionId: null,
     submitterFingerprint: "fp",
     status: "active",
@@ -50,10 +60,10 @@ describe("netScore", () => {
 
 describe("rankRevisions", () => {
   it("higher tier beats more signals", () => {
-    const imported = rev({ tier: "imported" });
+    const low = rev({ tier: "auto_aligned" });
     const verified = rev({ tier: "verified" });
-    const s = [sig(imported.id, { fingerprint: "a" }), sig(imported.id, { fingerprint: "b" })];
-    expect(rankRevisions([imported, verified], s)?.id).toBe(verified.id);
+    const s = [sig(low.id, { fingerprint: "a" }), sig(low.id, { fingerprint: "b" })];
+    expect(rankRevisions([low, verified], s)?.id).toBe(verified.id);
   });
 
   it("within a tier, net signals win", () => {
@@ -77,9 +87,31 @@ describe("rankRevisions", () => {
     const pending = rev({ tier: "verified", status: "pending_review" });
     const rejected = rev({ tier: "verified", status: "rejected" });
     const reverted = rev({ tier: "verified", status: "reverted" });
-    const active = rev({ tier: "imported" });
+    const active = rev({ tier: "auto_aligned" });
     expect(rankRevisions([pending, rejected, reverted, active], [])?.id).toBe(active.id);
     expect(rankRevisions([pending, rejected, reverted], [])).toBeNull();
+  });
+
+  it("never returns a line-level revision", () => {
+    const lineOnly = rev({ payload: lineLevelPayload() });
+    expect(rankRevisions([lineOnly], [])).toBeNull();
+  });
+
+  it("word-level low tier beats line-level high tier", () => {
+    const lineVerified = rev({ tier: "verified", payload: lineLevelPayload() });
+    const wordAligned = rev({ tier: "auto_aligned" });
+    expect(rankRevisions([lineVerified, wordAligned], [])?.id).toBe(wordAligned.id);
+  });
+
+  it("treats unparseable payloads as line-level", () => {
+    const broken = rev({ payload: "not json" });
+    expect(rankRevisions([broken], [])).toBeNull();
+  });
+
+  it("ranks legacy tiers outside the enum below every known tier", () => {
+    const legacy = rev({ tier: "imported" as never, createdAt: 2000 });
+    const known = rev({ tier: "auto_aligned", createdAt: 1000 });
+    expect(rankRevisions([legacy, known], [])?.id).toBe(known.id);
   });
 });
 
@@ -87,7 +119,7 @@ describe("computeBestRevision", () => {
   it("materializes the winner onto tracks.best_revision_id", async () => {
     const db = await makeDb();
     const track = await makeTrack(db);
-    const low = await makeRevision(db, track.id, { tier: "imported" });
+    const low = await makeRevision(db, track.id, { tier: "auto_aligned" });
     const high = await makeRevision(db, track.id, { tier: "community" });
     await makeSignal(db, low.id, { fingerprint: "a" });
 
@@ -103,5 +135,15 @@ describe("computeBestRevision", () => {
     const track = await makeTrack(db);
     await makeRevision(db, track.id, { status: "rejected" });
     expect(await computeBestRevision(db, track.id)).toBeNull();
+  });
+
+  it("sets null when only line-level revisions exist", async () => {
+    const db = await makeDb();
+    const track = await makeTrack(db);
+    await makeRevision(db, track.id, { payload: lineLevelPayload() });
+    expect(await computeBestRevision(db, track.id)).toBeNull();
+
+    const [row] = await db.select().from(tracks).where(eq(tracks.id, track.id));
+    expect(row.bestRevisionId).toBeNull();
   });
 });

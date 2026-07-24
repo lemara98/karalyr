@@ -27,14 +27,27 @@ export function netScore(revisionSignals: Signal[]): number {
 }
 
 /**
- * Pick the best revision: active only; highest tier, then highest net
- * score, then newest created_at, then highest id.
+ * Karalyr serves word/syllable-synced lyrics only. Legacy line-level rows
+ * (pre word-only policy, restored backups) must never become the best
+ * revision — unparseable payloads count as line-level.
+ */
+function hasWordTiming(rev: Revision): boolean {
+  try {
+    return JSON.parse(rev.payload)?.meta?.has_word_timing === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pick the best revision: active and word-timed only; highest tier, then
+ * highest net score, then newest created_at, then highest id.
  */
 export function rankRevisions(
   candidates: Revision[],
   allSignals: Signal[]
 ): Revision | null {
-  const active = candidates.filter((r) => r.status === "active");
+  const active = candidates.filter((r) => r.status === "active" && hasWordTiming(r));
   if (active.length === 0) return null;
 
   const scores = new Map<number, number>();
@@ -43,7 +56,9 @@ export function rankRevisions(
   }
 
   return active.reduce((best, rev) => {
-    const tierDiff = TIER_RANK[rev.tier] - TIER_RANK[best.tier];
+    // Tiers no longer in the enum (e.g. legacy "imported" rows awaiting
+    // cleanup) rank below everything that is.
+    const tierDiff = (TIER_RANK[rev.tier] ?? -1) - (TIER_RANK[best.tier] ?? -1);
     if (tierDiff !== 0) return tierDiff > 0 ? rev : best;
     const scoreDiff = (scores.get(rev.id) ?? 0) - (scores.get(best.id) ?? 0);
     if (scoreDiff !== 0) return scoreDiff > 0 ? rev : best;
