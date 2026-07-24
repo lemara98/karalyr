@@ -59,13 +59,13 @@ const FEATURES = [
 const STEPS = [
   {
     n: "01",
-    title: "Paste your lyrics",
-    body: "Drop in plain text, or import an existing .lrc, Enhanced LRC, or UltraStar file.",
+    title: "Bring a song",
+    body: "Import a word-synced Enhanced LRC or UltraStar file — or start from plain lyrics and a YouTube link.",
   },
   {
     n: "02",
-    title: "Play and tap",
-    body: "Follow the simulator clock and tap on each line. Nudge anything after, millisecond by millisecond.",
+    title: "Request an AI sync",
+    body: "The aligner listens to the song and times every word. The community votes the queue's order.",
   },
   {
     n: "03",

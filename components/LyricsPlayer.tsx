@@ -313,10 +313,7 @@ export function LyricsView({
         </div>
       </div>
       <p className="text-xs text-[color:var(--color-text-dim)]">
-        {captionLead}
-        {payload.meta.has_word_timing
-          ? " The current word lights up karaoke-style."
-          : " This revision has line-level timing only."}
+        {captionLead} The current word lights up karaoke-style.
       </p>
     </div>
   );

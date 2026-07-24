@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlignLocal } from "./AlignLocal";
-import { TapEditor } from "./TapEditor";
 import { detectFormat, parseByFormat, type ImportFormat } from "@/lib/formats";
-import type { LyricsPayload } from "@/lib/formats/types";
 import { solvePow } from "@/lib/pow-client";
 
-type Mode = "paste" | "tap" | "ai" | "request";
+type Mode = "paste" | "ai" | "request";
 
 interface PublishState {
   phase: "idle" | "solving" | "publishing" | "done" | "error";
@@ -333,7 +331,6 @@ export function Contribute({
 
   const [raw, setRaw] = useState(initial?.raw ?? "");
   const [format, setFormat] = useState<ImportFormat | "auto">("auto");
-  const [tapPayload, setTapPayload] = useState<LyricsPayload | null>(null);
   const [state, setState] = useState<PublishState>({ phase: "idle" });
 
   const durationSeconds = parseFloat(duration) || 0;
@@ -354,11 +351,15 @@ export function Contribute({
     }
   }, [mode, raw, format]);
 
+  // Word timing is required to publish — a line-level paste would only be
+  // rejected by the server, so keep the button disabled instead.
   const ready =
     artist.trim() !== "" &&
     title.trim() !== "" &&
     durationSeconds > 0 &&
-    (mode === "paste" ? preview !== null && !preview.error : tapPayload !== null);
+    preview !== null &&
+    !preview.error &&
+    preview.wordTiming;
 
   async function publish() {
     try {
@@ -383,13 +384,9 @@ export function Contribute({
         duration: durationSeconds,
         video_url: videoUrl.trim() || null,
       };
-      if (mode === "paste") {
-        body.raw = raw;
-        body.format = format === "auto" ? detectFormat(raw) : format;
-        if (body.format === "ultrastar") body.source = "ultrastar_import";
-      } else {
-        body.payload = tapPayload;
-      }
+      body.raw = raw;
+      body.format = format === "auto" ? detectFormat(raw) : format;
+      if (body.format === "ultrastar") body.source = "ultrastar_import";
       // Editing an existing track: chain to the revision being corrected so
       // the server records this as a correction, not a fresh submission.
       if (initial) body.parent_revision_id = initial.parentRevisionId;
@@ -461,9 +458,6 @@ export function Contribute({
           <button className={tab(mode === "paste")} onClick={() => setMode("paste")}>
             Paste lyrics file
           </button>
-          <button className={tab(mode === "tap")} onClick={() => setMode("tap")}>
-            Tap timing editor
-          </button>
           {aiAlignEnabled && (
             <button className={tab(mode === "ai")} onClick={() => setMode("ai")}>
               🎯 AI align (local)
@@ -478,13 +472,13 @@ export function Contribute({
             <AlignLocal />
           ) : mode === "request" ? (
             <RequestSync />
-          ) : mode === "paste" ? (
+          ) : (
             <div className="space-y-3">
               <textarea
                 value={raw}
                 onChange={(e) => setRaw(e.target.value)}
                 rows={12}
-                placeholder={"[00:12.04]First line…\nor Enhanced LRC / UltraStar .txt"}
+                placeholder={"[00:12.04]<00:12.04>First <00:12.61>line…\nEnhanced LRC / UltraStar .txt (word-synced)"}
                 className="field !rounded-xl text-sm"
                 style={{ fontFamily: "var(--font-mono)" }}
               />
@@ -507,18 +501,20 @@ export function Contribute({
                     className={
                       preview.error
                         ? "text-red-400"
-                        : "text-[color:var(--color-text-dim)]"
+                        : preview.wordTiming
+                          ? "text-[color:var(--color-text-dim)]"
+                          : "text-amber-400"
                     }
                   >
                     {preview.error
                       ? `Parse error: ${preview.error}`
-                      : `Detected ${preview.fmt}: ${preview.lines} lines, ${preview.wordTiming ? "word-level" : "line-level"} timing`}
+                      : preview.wordTiming
+                        ? `Detected ${preview.fmt}: ${preview.lines} lines, word-level timing`
+                        : `Detected ${preview.fmt}: ${preview.lines} lines — line-level only. Publishing needs word timing; use "Request AI sync" instead.`}
                   </span>
                 )}
               </div>
             </div>
-          ) : (
-            <TapEditor durationSeconds={durationSeconds} onPayloadReady={setTapPayload} />
           )}
         </div>
       </div>

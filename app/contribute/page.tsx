@@ -62,9 +62,9 @@ export default async function ContributePage({
           </>
         ) : (
           <>
-            Paste an LRC / Enhanced LRC / UltraStar file, tap out line timing with the
-            simulator, or request an AI word-sync from a YouTube link. Every submission
-            becomes a new revision — nothing is overwritten.
+            Paste a word-synced Enhanced LRC / UltraStar file, or request an AI word-sync
+            from a YouTube link. Every submission becomes a new revision — nothing is
+            overwritten.
           </>
         )}
       </p>
