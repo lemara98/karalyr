@@ -105,7 +105,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
               <p className="mt-3 text-[13px] leading-relaxed text-[color:var(--color-text-muted)]">
                 The open karaoke lyrics database. Open source (MIT) and
-                non-commercial; imports credit LRCLIB.
+                non-commercial.
               </p>
               <a
                 href="https://betania.io"

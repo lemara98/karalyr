@@ -1,14 +1,18 @@
 # Karalyr
 
-An open-source, LRCLIB-style lyrics database purpose-built for **karaoke**:
-word-level timed lyrics, community corrections, and an open JSON API. Karalyr
-is the data backbone for [Karafilt](https://karafilt.com) (real-time
+An open-source, LRCLIB-style lyrics database purpose-built for **karaoke**.
+Karalyr stores **word/syllable-synced lyrics only** — every song in the
+library went through an alignment process (AI aligner, word-tagged upload, or
+a correction of either). Community corrections and an open JSON API on top.
+Karalyr is the data backbone for [Karafilt](https://karafilt.com) (real-time
 vocal removal + synced lyrics in the browser). Non-commercial, MIT-licensed.
 
 Why not just LRCLIB? LRCLIB is line-level and has no correction loop. Karaoke
 needs word-level highlighting, duet parts, and a way for singers to fix
 timing — without accounts. Karalyr adds all of that while staying
-API-compatible: an LRCLIB client works by swapping the base URL.
+API-compatible: an LRCLIB client works by swapping the base URL. Songs
+Karalyr doesn't have yet live in the **wanted queue** until someone aligns
+them; clients keep their own fallbacks (e.g. LRCLIB itself) in the meantime.
 
 ## Quick start
 
@@ -29,11 +33,11 @@ Base URL: `http://localhost:3000`. Full docs with curl examples at `/docs`.
 
 | Endpoint | Description |
 | --- | --- |
-| `GET /api/get?artist_name=&track_name=&album_name=&duration=` | Best lyrics for an exact match (±2s duration). 404 triggers a lazy LRCLIB import — retry shortly after. |
+| `GET /api/get?artist_name=&track_name=&album_name=&duration=` | Best lyrics for an exact match (±2s duration). Word-synced only; a miss is a plain 404. |
 | `GET /api/get/:track_id` | Same, by internal id |
 | `GET /api/search?q=` | Full-text search (FTS5) over artist/title/album |
 | `POST /api/request-challenge` | Proof-of-work challenge for publishing |
-| `POST /api/publish` | Submit lyrics (structured payload, or raw LRC / Enhanced LRC / UltraStar) |
+| `POST /api/publish` | Submit lyrics (word-synced only: Enhanced LRC / UltraStar / structured payload) |
 | `POST /api/signal` | 👍 / 👎 / clean playthrough / timing offset report |
 | `GET /api/track/:id/revisions` | Public revision history |
 
@@ -50,9 +54,9 @@ Lyrics are **immutable revisions**. Every submission — import, user upload,
 correction — is a new row; nothing is overwritten and history is public.
 Each revision has:
 
-- a **source**: `lrclib_import`, `auto_aligned`, `user_submission`,
-  `ultrastar_import`, `correction`
-- a **tier**: `imported < auto_aligned < community < verified`
+- a **source**: `auto_aligned`, `user_submission`, `ultrastar_import`,
+  `correction`
+- a **tier**: `auto_aligned < community < verified`
 - a **status**: `active`, `pending_review`, `rejected`, `reverted`
 
 The API serves the *best* active revision per track: highest tier first, then
@@ -88,14 +92,11 @@ Anonymous feedback (`signals`) drives quality:
 
 ### Seams for growth
 
-Two pieces are deliberately behind interfaces with in-process
-implementations, so they can be upgraded without touching route handlers:
+One piece is deliberately behind an interface with an in-process
+implementation, so it can be upgraded without touching route handlers:
 
 - `lib/stores/kv.ts` — rate-limit counters + PoW replay guard (swap the
   in-memory store for Redis/Turso when running multiple instances)
-- `lib/lazy-import/queue.ts` — background jobs (swap fire-and-forget for a
-  real queue). The lazy importer fetches misses from LRCLIB with a polite
-  User-Agent and stores them as `lrclib_import` revisions.
 
 ### Lyrics payload
 
@@ -116,7 +117,8 @@ implementations, so they can be upgraded without touching route handlers:
 }
 ```
 
-`words` is optional (line-level imports set `has_word_timing: false`);
+`words` is required in practice — only payloads with
+`has_word_timing: true` are accepted and served.
 `singer` is `"P1" | "P2" | "BOTH" | null` for duets. Converters in
 `lib/formats/` import plain LRC, Enhanced LRC (`<mm:ss.xx>` word tags), and
 UltraStar `.txt` (beat timing mapped via `ms = GAP + beat * 15000 / BPM`),
@@ -144,4 +146,4 @@ Full walkthrough in [DEPLOY.md](DEPLOY.md).
 ## License
 
 MIT — see [LICENSE](LICENSE). Seed data contains only original placeholder
-verses; real lyrics arrive via user contributions and LRCLIB imports.
+verses; real lyrics arrive via user contributions.

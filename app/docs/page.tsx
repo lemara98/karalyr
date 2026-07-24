@@ -67,9 +67,10 @@ export default function DocsPage() {
         <p>
           Best lyrics for an exact track match. Params: <code>artist_name</code>,{" "}
           <code>track_name</code> (required), <code>album_name</code>,{" "}
-          <code>duration</code> (seconds, matched ±2s). On a miss it returns 404
-          and triggers a background import from LRCLIB — retry once after a
-          couple of seconds.
+          <code>duration</code> (seconds, matched ±2s). Karalyr serves
+          word-synced karaoke lyrics only; on a miss it returns 404 — clients
+          handle their own fallbacks (e.g. LRCLIB) and can request a sync via
+          the wanted queue.
         </p>
         <Code>{`curl "${BASE}/api/get?artist_name=Neon%20Practice&track_name=Refactor%20My%20Heart&duration=212"`}</Code>
         <p>
@@ -109,7 +110,9 @@ export default function DocsPage() {
           metadata + either a structured <code>payload</code> or <code>raw</code>{" "}
           text with <code>format</code> (<code>lrc</code>,{" "}
           <code>enhanced_lrc</code>, <code>ultrastar</code>), plus the solved
-          challenge. If the track&apos;s current best revision is verified, the
+          challenge. Word timing is required: line-level LRC is rejected with{" "}
+          <code>WordTimingRequired</code> — request a sync in the wanted queue
+          instead. If the track&apos;s current best revision is verified, the
           submission enters <code>pending_review</code>.
         </p>
         <Code>{`curl -X POST "${BASE}/api/publish" -H "Content-Type: application/json" -d '{
@@ -117,8 +120,8 @@ export default function DocsPage() {
   "artist_name": "Artist",
   "track_name": "Song",
   "duration": 201,
-  "raw": "[00:12.00]First line\\n[00:15.30]Second line",
-  "format": "lrc"
+  "raw": "[00:12.00]<00:12.00>First <00:12.60>line\\n[00:15.30]<00:15.30>Second <00:15.90>line",
+  "format": "enhanced_lrc"
 }'`}</Code>
       </Endpoint>
 
@@ -135,27 +138,6 @@ export default function DocsPage() {
   -d '{ "revision_id": 2, "type": "explicit_up" }'`}</Code>
       </Endpoint>
 
-      <Endpoint method="POST" path="/api/observe">
-        <p>
-          Listen-along alignment: karaoke clients (the Karafilt extension)
-          submit per-line word-timing observations measured during normal
-          playback. Body: track metadata + <code>line_start_ms</code>,{" "}
-          <code>line_text</code>, <code>words</code> and a{" "}
-          <code>confidence</code> (0–1). Once enough lines of a track are
-          covered, observations are median-merged and published automatically
-          as an <code>auto_aligned</code> revision. Unknown tracks return 202
-          and trigger a LRCLIB import.
-        </p>
-        <Code>{`curl -X POST "${BASE}/api/observe" -H "Content-Type: application/json" -d '{
-  "artist_name": "Artist", "track_name": "Song", "duration": 195,
-  "line_start_ms": 4000, "line_text": "First line here",
-  "words": [ { "text": "First", "start_ms": 4000, "end_ms": 4400 },
-             { "text": "line", "start_ms": 4400, "end_ms": 4800 },
-             { "text": "here", "start_ms": 4800, "end_ms": 5400 } ],
-  "confidence": 0.7
-}'`}</Code>
-      </Endpoint>
-
       <Endpoint method="GET" path="/api/track/:id/revisions">
         <p>Full revision history for a track (public transparency).</p>
         <Code>{`curl "${BASE}/api/track/2/revisions"`}</Code>
@@ -165,7 +147,7 @@ export default function DocsPage() {
         <h2 className="text-base font-semibold text-[color:var(--color-text)]">Tiers</h2>
         <p>
           Every revision has a tier:{" "}
-          <code>imported &lt; auto_aligned &lt; community &lt; verified</code>.
+          <code>auto_aligned &lt; community &lt; verified</code>.
           The API always serves the active revision with the highest tier; ties
           break by community signals, then recency.
         </p>

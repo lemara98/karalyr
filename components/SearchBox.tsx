@@ -65,8 +65,11 @@ export function SearchBox() {
         <ul className="mt-4 divide-y divide-white/5">
           {results.length === 0 && (
             <li className="py-4 text-sm text-[color:var(--color-text-muted)]">
-              No matches. Karaoke clients trigger automatic imports from LRCLIB
-              on lookup, or you can{" "}
+              No matches. Ask for it in the{" "}
+              <Link href="/queue" className="text-[color:var(--klr-b)] hover:text-[color:var(--klr-hi)]">
+                wanted queue
+              </Link>
+              , or{" "}
               <Link href="/contribute" className="text-[color:var(--klr-b)] hover:text-[color:var(--klr-hi)]">
                 sync it yourself
               </Link>
