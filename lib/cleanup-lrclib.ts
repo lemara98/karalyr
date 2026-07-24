@@ -138,12 +138,14 @@ export async function cleanupLrclibImports(
           },
           now
         );
-        if (res.ok && !res.voted) {
-          summary.jobsCreated++;
-          log(`${label}: wanted request created (job ${res.job.id}, ${videoUrl})`);
-        } else if (res.ok && res.voted) {
-          summary.votesRecorded++;
-          log(`${label}: live request already exists — recorded a vote (job ${res.job.id})`);
+        if (res.ok) {
+          if (res.voted) {
+            summary.votesRecorded++;
+            log(`${label}: live request already exists — recorded a vote (job ${res.job.id})`);
+          } else {
+            summary.jobsCreated++;
+            log(`${label}: wanted request created (job ${res.job.id}, ${videoUrl})`);
+          }
         } else if (res.code === "AlreadySynced") {
           summary.alreadySynced++;
           log(`${label}: already word-synced elsewhere — no request needed`);
