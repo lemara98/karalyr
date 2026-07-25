@@ -46,7 +46,9 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
     title: "FAMILY",
     links: [
       { label: "Karafilt", href: "https://karafilt.com" },
-      { label: "Extension", href: "https://karafilt.com/install" },
+      { label: "Install the extension", href: "https://karafilt.com/install" },
+      { label: "Party mode", href: "https://karafilt.com/party" },
+      { label: "Karafilt docs", href: "https://karafilt.com/docs" },
     ],
   },
   {

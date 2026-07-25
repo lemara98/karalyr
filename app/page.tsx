@@ -5,6 +5,7 @@ import { listMostUsedTracks, listMostWantedSongs } from "@/lib/db/queries";
 import { revisions, tracks } from "@/lib/db/schema";
 import { getContributors } from "@/lib/github";
 import { ContributorsGrid } from "@/components/ContributorsGrid";
+import { KarafiltMark } from "@/components/KarafiltMark";
 import { KaralyrMark } from "@/components/KaralyrMark";
 import { LyricsDemo } from "@/components/LyricsDemo";
 import { SearchBox } from "@/components/SearchBox";
@@ -71,6 +72,21 @@ const STEPS = [
     n: "03",
     title: "Export or publish",
     body: "Download the .lrc, or publish it to the library for every karaoke player to use.",
+  },
+];
+
+const KARAFILT_POINTS = [
+  {
+    title: "Vocals out, in real time",
+    body: "Three filtering modes, all running locally in the browser. Nothing is uploaded.",
+  },
+  {
+    title: "These lyrics, on screen",
+    body: "Karafilt looks a song up on Karalyr first, so word timing arrives ready to sing.",
+  },
+  {
+    title: "Free and open source",
+    body: "MIT, like Karalyr — install it once and every mode is yours.",
   },
 ];
 
@@ -286,6 +302,88 @@ export default async function HomePage() {
               value={revisionStats.contributors.toLocaleString("en-US")}
               hint="Anonymous, salted hashes only"
             />
+          </div>
+        </div>
+      </section>
+
+      {/* The sibling project — karafilt.com links back to this section's twin */}
+      <section id="karafilt" className="scroll-mt-6 border-t border-white/5">
+        <div className="mx-auto max-w-6xl px-6 py-18">
+          <div className="klr-card relative overflow-hidden p-8 sm:p-10">
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(420px 240px at 88% 0%, rgba(139,124,255,0.13), transparent 70%)",
+              }}
+            />
+            <div className="relative grid items-center gap-10 lg:grid-cols-[1.15fr_0.85fr]">
+              <div>
+                <div className="mb-5 flex items-center gap-2.5">
+                  <span className="h-[26px] w-[23px] flex-none">
+                    <KarafiltMark />
+                  </span>
+                  <span
+                    className="text-lg font-bold tracking-[-0.02em]"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    karafilt<span className="text-[#b46cff]">.</span>
+                  </span>
+                </div>
+                <p className="klr-eyebrow">THE OTHER HALF</p>
+                <h2
+                  className="mb-3.5 mt-2.5 text-[32px] font-bold tracking-[-0.02em]"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  Karalyr writes the words.
+                  <br />
+                  Karafilt takes the voice away.
+                </h2>
+                <p className="max-w-lg text-[15px] leading-relaxed text-[color:var(--color-text-muted)]">
+                  Karafilt is the free browser extension from the same family: it strips
+                  the lead vocal out of any tab — YouTube, Spotify Web, SoundCloud — in
+                  real time, then asks Karalyr for the lyrics and lights them up word by
+                  word while you sing. Every song timed here shows up there.
+                </p>
+                <div className="mt-7 flex flex-wrap items-center gap-3">
+                  <a
+                    href="https://karafilt.com/install"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary"
+                  >
+                    Install Karafilt free
+                  </a>
+                  <a
+                    href="https://karafilt.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-secondary"
+                  >
+                    Visit karafilt.com
+                  </a>
+                </div>
+                <p
+                  className="mt-6 text-xs text-[color:var(--color-text-dim)]"
+                  style={{ fontFamily: "var(--font-mono)" }}
+                >
+                  Chrome · Edge · Brave · Arc · Vivaldi · Opera
+                </p>
+              </div>
+              <ul className="flex list-none flex-col gap-3 p-0">
+                {KARAFILT_POINTS.map((p) => (
+                  <li
+                    key={p.title}
+                    className="rounded-xl border border-white/8 bg-white/[0.02] p-4"
+                  >
+                    <p className="text-[15px] font-semibold">{p.title}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-[color:var(--color-text-muted)]">
+                      {p.body}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </section>
