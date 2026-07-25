@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db/client";
 import {
   listLibraryTracks,
   listNewestSyncedTracks,
+  listSyncedTracksPage,
   type LibraryTrack,
   type NewestSyncedTrack,
 } from "@/lib/db/queries";
@@ -16,6 +17,7 @@ import {
   trackVideos,
 } from "@/lib/db/schema";
 import { parseVideoKey } from "@/lib/video-key";
+import { LibraryBrowser } from "@/components/LibraryBrowser";
 import { SearchBox } from "@/components/SearchBox";
 import { StatCard } from "@/components/StatCard";
 import { TierBadge } from "@/components/TierBadge";
@@ -133,18 +135,26 @@ function CarouselCard({ track, hidden }: { track: NewestSyncedTrack; hidden?: bo
 
 export default async function LibraryPage() {
   const db = getDb();
-  const [[trackStats], [readyStats], [revisionStats], [wantedStats], newest, ranked] =
-    await Promise.all([
-      db.select({ n: count() }).from(tracks),
-      db.select({ n: count() }).from(tracks).where(isNotNull(tracks.bestRevisionId)),
-      db.select({ n: count() }).from(revisions),
-      db
-        .select({ n: count() })
-        .from(syncJobs)
-        .where(inArray(syncJobs.status, [...SYNC_JOB_ACTIVE_STATUSES])),
-      listNewestSyncedTracks(db, 12),
-      listLibraryTracks(db, 60),
-    ]);
+  const [
+    [trackStats],
+    [readyStats],
+    [revisionStats],
+    [wantedStats],
+    newest,
+    ranked,
+    firstPage,
+  ] = await Promise.all([
+    db.select({ n: count() }).from(tracks),
+    db.select({ n: count() }).from(tracks).where(isNotNull(tracks.bestRevisionId)),
+    db.select({ n: count() }).from(revisions),
+    db
+      .select({ n: count() })
+      .from(syncJobs)
+      .where(inArray(syncJobs.status, [...SYNC_JOB_ACTIVE_STATUSES])),
+    listNewestSyncedTracks(db, 12),
+    listLibraryTracks(db, 60),
+    listSyncedTracksPage(db),
+  ]);
 
   // The grid: only tracks with real usage or a positive vote balance.
   const top = ranked.filter((t) => t.singers > 0 || t.score > 0);
@@ -283,6 +293,24 @@ export default async function LibraryPage() {
           )}
         </div>
       </section>
+
+      {/* Every song, a page at a time as you scroll */}
+      {firstPage.items.length > 0 && (
+        <section className="border-t border-white/5">
+          <div className="mx-auto max-w-6xl px-6 py-12">
+            <p className="klr-eyebrow !text-[11px]">EVERY SONG</p>
+            <p className="mb-4 mt-1.5 text-sm text-[color:var(--color-text-muted)]">
+              The whole library, newest first — keep scrolling and the next page loads
+              itself.
+            </p>
+            <LibraryBrowser
+              initialItems={firstPage.items}
+              initialCursor={firstPage.nextCursor}
+              total={readyStats.n}
+            />
+          </div>
+        </section>
+      )}
 
       {/* CTA */}
       <section className="border-t border-white/5">

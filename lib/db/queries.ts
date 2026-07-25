@@ -351,6 +351,66 @@ export async function listLibraryTracks(db: Db, limit = 60): Promise<LibraryTrac
   }));
 }
 
+export interface LibraryPageTrack extends Track {
+  bestTier: Tier | null;
+  bestHasWordTiming: boolean;
+}
+
+/** Songs per page in the /library "every song" browser. */
+export const LIBRARY_PAGE_SIZE = 48;
+
+/**
+ * One page of the whole library — every track with karaoke lyrics, newest
+ * first. Keyset paginated on the track id rather than OFFSET: the cursor
+ * stays correct while someone scrolls even if songs land in the meantime,
+ * and it rides the primary key instead of counting rows it will throw away.
+ */
+export async function listSyncedTracksPage(
+  db: Db,
+  opts: { cursor?: number | null; limit?: number } = {}
+): Promise<{ items: LibraryPageTrack[]; nextCursor: number | null }> {
+  const limit = Math.max(1, Math.min(opts.limit ?? LIBRARY_PAGE_SIZE, 100));
+  const cursor = opts.cursor ?? null;
+  // One extra row tells us whether another page exists without a COUNT.
+  const rows = await db.all<{
+    id: number;
+    artist_name: string;
+    track_name: string;
+    album_name: string | null;
+    duration_seconds: number;
+    best_revision_id: number | null;
+    created_at: number;
+    best_tier: Tier | null;
+    best_has_words: number | null;
+  }>(sql`
+    SELECT t.*, r.tier AS best_tier,
+      json_extract(r.payload, '$.meta.has_word_timing') AS best_has_words
+    FROM tracks t
+    JOIN revisions r ON r.id = t.best_revision_id
+    ${cursor == null ? sql`` : sql`WHERE t.id < ${cursor}`}
+    ORDER BY t.id DESC
+    LIMIT ${limit + 1}
+  `);
+
+  const hasMore = rows.length > limit;
+  const items = rows.slice(0, limit).map((r) => ({
+    id: r.id,
+    artistName: r.artist_name,
+    trackName: r.track_name,
+    albumName: r.album_name,
+    durationSeconds: r.duration_seconds,
+    bestRevisionId: r.best_revision_id,
+    createdAt: r.created_at,
+    bestTier: r.best_tier,
+    bestHasWordTiming: r.best_has_words === 1,
+  }));
+
+  return {
+    items,
+    nextCursor: hasMore && items.length > 0 ? items[items.length - 1].id : null,
+  };
+}
+
 export interface NewestSyncedTrack extends Track {
   bestTier: Tier | null;
   bestHasWordTiming: boolean;
