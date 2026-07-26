@@ -14,7 +14,7 @@ replayed against any instance that had not seen it. If you ever revert
 ## 1. Database
 
 Create the Turso database, then migrate it **from your machine, pointed at
-production**. There is no migration step in the build.
+production**. There is no migration step in the Vercel build.
 
 ```bash
 turso db create karalyr
@@ -24,8 +24,27 @@ turso db tokens create karalyr       # the auth token
 DATABASE_URL=libsql://… DATABASE_AUTH_TOKEN=… npm run db:migrate
 ```
 
-Expect 9 migrations. **Do not run `npm run seed`** — that inserts placeholder
+Expect 11 migrations. **Do not run `npm run seed`** — that inserts placeholder
 sample tracks meant for local development.
+
+### Migrating on push
+
+`.github/workflows/migrate.yml` runs `npm run db:migrate` against production on
+every push to `main` that touches `drizzle/`, and on demand from the Actions
+tab. It needs two secrets — `DATABASE_URL` and `DATABASE_AUTH_TOKEN` — on a
+GitHub environment named `production`; add a required reviewer there and each
+run waits for your approval before it touches the database.
+
+It stays out of the Vercel build on purpose: preview deploys build too, and
+they would migrate production from an unreviewed branch. Two caveats worth
+knowing before you rely on it:
+
+- **Nothing is backed up first.** Additive migrations are fine; run anything
+  that drops or rewrites data by hand, after `scripts/backup-db.sh`.
+- **It races the Vercel deploy.** Both start from the same push, so for a
+  migration the new code depends on, expect a short window where the deployed
+  app is ahead of the schema. Ship those in two pushes: migration first, then
+  the code that needs it.
 
 ## 2. Secrets
 

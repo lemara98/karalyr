@@ -1,0 +1,49 @@
+name: Migrate production database
+
+# Drizzle's migrator is idempotent — it applies only the files missing from
+# __drizzle_migrations — so this is safe to re-run. It fires on pushes to main
+# that touch drizzle/, and can always be started by hand from the Actions tab.
+#
+# Deliberately NOT part of the Vercel build: preview builds would migrate
+# production too, and a failed build would leave the schema half-moved.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "drizzle/**"
+      - ".github/workflows/migrate.yml"
+  workflow_dispatch:
+
+# One migration at a time. Never cancel a run in flight — an interrupted
+# migrator can leave a migration recorded but half-applied.
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    # Requires the two secrets below. Add them under Settings → Secrets and
+    # variables → Actions, or (better) on an `production` environment so the
+    # run can be gated behind a manual approval.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL is not set — add the repository secrets first." >&2
+            exit 1
+          fi
+          npm run db:migrate
