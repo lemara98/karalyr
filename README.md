@@ -143,6 +143,93 @@ Full walkthrough in [DEPLOY.md](DEPLOY.md).
   `api.karalyr.com`) from day one — never hand out the `*.vercel.app` URL.
   Moving off Vercel is then only a DNS change and no client ever breaks.
 
+## Legal posture
+
+This section records the reasoning the code already enforces, and — just as
+plainly — the part that is not settled. **None of it is legal advice.**
+Copyright and platform terms vary by jurisdiction, and running a public
+service is a different risk profile from personal use.
+
+### What the pipeline keeps
+
+Alignment runs on your machine. Demucs separates the vocal stem, MMS aligns it
+to the lyric lines, and the run's temp directory — audio, separated stems,
+transcript — is deleted when the process exits (`worker/align.py`). What leaves
+the machine is a payload of timestamps. This project stores, serves, and
+transmits no audio.
+
+Timings are the most defensible artifact here: measurements *about* a recording
+rather than the recording. That is why the design keeps them and discards
+everything else.
+
+### Audio sources — the operator's rule
+
+**Align only from audio you have a lawful way to hold**: purchased downloads,
+CD rips, your own recordings, openly licensed material.
+
+Promotion into `queued` is admin-only for exactly this reason
+(`lib/sync-queue/core.ts`) — a person decides, per song, that they have a
+lawful source. `queue_worker.py` deliberately cannot fetch audio, and
+`align.py --youtube` survives only as a local testing flag because downloading
+from YouTube violates YouTube's Terms of Service. Never wire it into a hosted
+flow.
+
+Capturing a stream is not "audio you possess". The capture extension reduces
+the copying involved; it does not license the copy. It exists so alignment
+needs no download — not to launder the source.
+
+Automating acquisition breaks this twice over: YouTube's terms separately
+prohibit automated access, and unattended extraction at scale is the pattern
+that attracts enforcement. **Automate the aligning, never the acquiring.**
+
+### Lyrics — the unresolved part
+
+Karalyr stores and serves lyric text, and lyric text is a copyrighted work
+separate from the recording. This is the project's real exposure, and it is
+larger than anything in the audio pipeline.
+
+Two points worth stating without hedging:
+
+- **Attribution is not a licence.** Naming the writer, the composer, or the
+  recording a set of timings belongs to is good practice and ordinary
+  courtesy. It does not grant permission to reproduce or distribute the words.
+  Neither does disclaiming ownership of them.
+- **Karaoke is a specifically licensed use.** Displaying lyrics in time with
+  music engages a synchronisation/reprint right held by music publishers. In
+  the US, *Leadsinger v. BMG Music Publishing* (9th Cir. 2008) held that the
+  compulsory mechanical licence does not reach on-screen karaoke lyrics. The
+  EU offers no compulsory route either — reproduction and communication to the
+  public clear through the publisher, not through a PRO.
+
+"Credit the author and distribute freely" is therefore not a lawful basis,
+however fair it feels.
+
+### Repertoire policy
+
+Accepted without further clearance:
+
+- **Public domain** — author died 70+ years ago (term is jurisdiction-specific).
+  Traditional and folk material with no identifiable author is often genuinely
+  here; *arrangements* of it usually are not.
+- **Openly licensed** — CC-BY, CC-BY-SA and similar, where the licence covers
+  reproduction. Record which licence, with the revision.
+- **Rightsholder-submitted** — an artist or publisher uploading their own work
+  and granting distribution.
+
+Not accepted on attribution alone: commercial catalogue lyrics, however
+carefully credited.
+
+To carry commercial repertoire there are two honest routes. License it through
+an aggregator (LyricFind, Musixmatch) — real, paid, and generally expecting a
+legal entity to contract with. Or restructure so Karalyr distributes *timing
+data keyed to a recording* while the client supplies its own lyrics, which
+narrows the exposure without eliminating it.
+
+### Forks and self-hosting
+
+The MIT licence covers this code, not the content that passes through it. What
+you align, and what you serve, is yours to answer for.
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Seed data contains only original placeholder
