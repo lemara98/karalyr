@@ -58,6 +58,10 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
       { label: "LRCLIB", href: "https://lrclib.net" },
       { label: "Contributors", href: "/contributors" },
       { label: "Sponsors", href: "/sponsors" },
+      // Deliberately in the footer of every page: a rightsholder who can't
+      // find the operator complains to the host instead, which takes down the
+      // whole deployment rather than one revision.
+      { label: "Report a rights issue", href: "/takedown" },
     ],
   },
 ];

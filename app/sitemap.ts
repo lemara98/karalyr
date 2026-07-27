@@ -24,6 +24,9 @@ const ROUTES: Array<{
   { path: "/queue", changeFrequency: "weekly", priority: 0.6 },
   { path: "/sponsors", changeFrequency: "monthly", priority: 0.5 },
   { path: "/contributors", changeFrequency: "weekly", priority: 0.5 },
+  // Indexed on purpose — a rightsholder searching for how to reach us should
+  // find this rather than giving up and writing to the host.
+  { path: "/takedown", changeFrequency: "yearly", priority: 0.4 },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
