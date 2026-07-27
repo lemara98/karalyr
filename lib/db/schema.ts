@@ -24,7 +24,17 @@ export const TIER_RANK: Record<Tier, number> = {
   verified: 2,
 };
 
-export const STATUSES = ["active", "pending_review", "rejected", "reverted"] as const;
+export const STATUSES = [
+  "active",
+  "pending_review",
+  "rejected",
+  "reverted",
+  // Removed on a rights complaint. Terminal and distinct from "rejected":
+  // rejected is a quality call an admin can reverse, taken_down is a legal
+  // one. The row survives for the audit trail but its payload is purged —
+  // see lib/takedown.ts. Never rankable (lib/ranking.ts filters on "active").
+  "taken_down",
+] as const;
 export type RevisionStatus = (typeof STATUSES)[number];
 
 export const SIGNAL_TYPES = [
@@ -314,6 +324,93 @@ export const kvEntries = sqliteTable(
   (t) => [index("kv_entries_expires_idx").on(t.expiresAt)]
 );
 
+export const TAKEDOWN_STATUSES = [
+  // Logged, nothing removed yet.
+  "received",
+  // Content removed. The normal outcome.
+  "actioned",
+  // Declined — not a rights complaint, or the claimant could not say what
+  // work they hold. Declining is recorded rather than silent, because the
+  // record of *why* is the point of keeping notices at all.
+  "declined",
+  "withdrawn",
+] as const;
+export type TakedownStatus = (typeof TAKEDOWN_STATUSES)[number];
+
+/**
+ * Rights complaints, and what was done about them.
+ *
+ * Karalyr serves lyric text, which is a copyrighted work separate from any
+ * recording (see the README's legal posture). The defensible position for a
+ * site built on user contributions is to host what contributors submit, act
+ * promptly when a rightsholder objects, and be able to show both — so every
+ * notice lands here whether or not it was actioned, and every takedown points
+ * back at the notice that caused it.
+ *
+ * Deliberately not tied to a user account: a rightsholder must be able to
+ * complain without signing up for anything.
+ */
+export const takedownNotices = sqliteTable(
+  "takedown_notices",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    status: text("status", { enum: TAKEDOWN_STATUSES }).notNull().default("received"),
+    // Who is complaining, and on whose behalf. Free text: an agent acting for
+    // a publisher is as valid as the writer themselves.
+    claimantName: text("claimant_name").notNull(),
+    claimantEmail: text("claimant_email").notNull(),
+    claimantOrg: text("claimant_org"),
+    /** Their relationship to the work ("rights owner", "authorised agent"…). */
+    claimantRole: text("claimant_role").notNull(),
+    /** The work being claimed, in the claimant's own words. */
+    workDescription: text("work_description").notNull(),
+    /** What on Karalyr they say infringes it — URLs, track ids, free text. */
+    complainedOf: text("complained_of").notNull(),
+    /** Track the notice resolved to, when it resolved to one. */
+    trackId: integer("track_id").references(() => tracks.id),
+    /** Revision ids actually removed, JSON array. Empty until actioned. */
+    removedRevisionIds: text("removed_revision_ids").notNull().default("[]"),
+    /** Admin's note: what was done, or why it was declined. */
+    resolution: text("resolution"),
+    /** Admin account that actioned it — accountability, same as moderation. */
+    actionedBy: text("actioned_by"),
+    actionedAt: integer("actioned_at"),
+    createdAt: integer("created_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (t) => [index("takedown_notices_status_idx").on(t.status, t.createdAt)]
+);
+
+/**
+ * The repeat-infringer policy, in table form.
+ *
+ * Hosting protections (DMCA §512 in the US, the DSA's hosting exemption in
+ * the EU) are conditioned on actually terminating people who keep uploading
+ * other people's work. A policy nobody can enforce is not a policy, so the
+ * block is checked on the publish path rather than left to intent.
+ *
+ * Keyed on the submitter fingerprint because that is the only identity a
+ * revision carries — Karalyr takes contributions without accounts. It is a
+ * weak identifier and blocking is therefore easy to evade; that is accepted.
+ * The obligation is to act on what you can see, not to be unevadable.
+ */
+export const blockedSubmitters = sqliteTable(
+  "blocked_submitters",
+  {
+    fingerprint: text("fingerprint").primaryKey(),
+    /** Why, in the admin's words. Shown to nobody but the audit trail. */
+    reason: text("reason").notNull(),
+    /** Strike count at block time, for showing the policy was followed. */
+    strikes: integer("strikes").notNull().default(0),
+    blockedBy: text("blocked_by"),
+    createdAt: integer("created_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (t) => [index("blocked_submitters_created_idx").on(t.createdAt)]
+);
+
 export type Track = typeof tracks.$inferSelect;
 export type Revision = typeof revisions.$inferSelect;
 export type Signal = typeof signals.$inferSelect;
@@ -322,3 +419,5 @@ export type LyricComment = typeof lyricComments.$inferSelect;
 export type SyncJob = typeof syncJobs.$inferSelect;
 export type SyncJobVote = typeof syncJobVotes.$inferSelect;
 export type SyncJobComment = typeof syncJobComments.$inferSelect;
+export type TakedownNotice = typeof takedownNotices.$inferSelect;
+export type BlockedSubmitter = typeof blockedSubmitters.$inferSelect;
