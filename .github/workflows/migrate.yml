@@ -38,12 +38,15 @@ jobs:
       - run: npm ci
 
       - name: Apply migrations
+        # Takes the values from either place: repository/environment *secrets*
+        # or *variables*. Prefer secrets for DATABASE_AUTH_TOKEN — variables
+        # are not masked in run logs, so anything that echoes one publishes it.
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || vars.DATABASE_URL }}
+          DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN || vars.DATABASE_AUTH_TOKEN }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "DATABASE_URL is not set — add the repository secrets first." >&2
+            echo "DATABASE_URL is not set — add it as an Actions secret or variable." >&2
             exit 1
           fi
           npm run db:migrate
