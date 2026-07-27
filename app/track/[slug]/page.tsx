@@ -1,10 +1,11 @@
 import { eq } from "drizzle-orm";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getDb } from "@/lib/db/client";
 import { listTrackVideos } from "@/lib/db/queries";
 import { revisions, tracks } from "@/lib/db/schema";
 import { validatePayload } from "@/lib/formats";
+import { parseTrackSlug, trackSlug } from "@/lib/track-slug";
 import { parseVideoKey, pickPreferredVideoKey } from "@/lib/video-key";
 import { AnnotatedLyrics } from "@/components/AnnotatedLyrics";
 import { ExportButtons } from "@/components/ExportButtons";
@@ -28,15 +29,20 @@ function formatDuration(seconds: number): string {
 export default async function TrackPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
-  const trackId = parseInt(id, 10);
-  if (!Number.isFinite(trackId)) notFound();
+  const { slug } = await params;
+  const trackId = parseTrackSlug(slug);
+  if (trackId == null) notFound();
 
   const db = getDb();
   const [track] = await db.select().from(tracks).where(eq(tracks.id, trackId));
   if (!track) notFound();
+
+  // Bare-id links and stale slugs (a renamed track, a hand-typed URL) resolve,
+  // then send the reader — and any crawler — to the one canonical address.
+  const canonical = trackSlug(track);
+  if (slug !== canonical) permanentRedirect(`/track/${canonical}`);
 
   const best =
     track.bestRevisionId != null
