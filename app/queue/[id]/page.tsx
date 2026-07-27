@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/lib/db/client";
 import { getWantedSongDetail } from "@/lib/db/queries";
 import { SYNC_JOB_ACTIVE_STATUSES } from "@/lib/db/schema";
+import { trackPath } from "@/lib/track-slug";
 import { parseVideoKey } from "@/lib/video-key";
 import { QueueComments } from "@/components/QueueComments";
 import { QueueVoteButton } from "@/components/QueueVoteButton";
@@ -112,7 +113,7 @@ export default async function QueueCandidatePage({
       <div className="flex flex-wrap items-center gap-3">
         {active && <QueueVoteButton jobId={job.id} nextPath={`/queue/${job.id}`} />}
         {job.status === "done" && job.resultTrackId != null && (
-          <Link href={`/track/${job.resultTrackId}`} className="btn btn-primary btn-sm">
+          <Link href={trackPath({ ...job, id: job.resultTrackId })} className="btn btn-primary btn-sm">
             Now in the library →
           </Link>
         )}
@@ -128,7 +129,7 @@ export default async function QueueCandidatePage({
         )}
         {libraryTrackId != null && job.status !== "done" && (
           <Link
-            href={`/track/${libraryTrackId}`}
+            href={trackPath({ ...job, id: libraryTrackId })}
             className="text-sm text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
           >
             In the library — no word timing yet

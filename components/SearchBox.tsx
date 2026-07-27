@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { TierBadge } from "./TierBadge";
 import { WordSyncBadge } from "./WordSyncBadge";
 import type { Tier } from "@/lib/db/schema";
+import { trackPath } from "@/lib/track-slug";
 
 interface Result {
   id: number;
@@ -79,7 +80,7 @@ export function SearchBox() {
           {results.map((r) => (
             <li key={r.id}>
               <Link
-                href={`/track/${r.id}`}
+                href={trackPath(r)}
                 className="-mx-3 flex items-center justify-between gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-white/[0.04]"
               >
                 <span className="min-w-0 truncate">

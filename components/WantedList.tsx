@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { WantedSong } from "@/lib/db/queries";
+import { trackPath } from "@/lib/track-slug";
 import { parseVideoKey } from "@/lib/video-key";
 import { QueueVoteButton } from "./QueueVoteButton";
 
@@ -82,7 +83,7 @@ function WantedRow({
       <div className="flex items-center gap-2.5">
         {song.trackId != null && (
           <Link
-            href={`/track/${song.trackId}`}
+            href={trackPath({ ...song, id: song.trackId })}
             className="text-xs text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
           >
             In the library

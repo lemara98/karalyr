@@ -16,6 +16,7 @@ import {
   tracks,
   trackVideos,
 } from "@/lib/db/schema";
+import { trackPath } from "@/lib/track-slug";
 import { parseVideoKey } from "@/lib/video-key";
 import { LibraryBrowser } from "@/components/LibraryBrowser";
 import { SearchBox } from "@/components/SearchBox";
@@ -55,7 +56,7 @@ function ScoreTag({ score }: { score: number }) {
 function TrackCard({ track, links }: { track: LibraryTrack; links?: TrackLinks }) {
   return (
     <div className="klr-card group flex flex-col gap-3 p-4 transition-colors hover:border-white/15">
-      <Link href={`/track/${track.id}`} className="min-w-0">
+      <Link href={trackPath(track)} className="min-w-0">
         <p
           className="truncate font-medium transition-colors group-hover:text-[color:var(--klr-hi)]"
           title={track.trackName}
@@ -115,7 +116,7 @@ function TrackCard({ track, links }: { track: LibraryTrack; links?: TrackLinks }
 function CarouselCard({ track, hidden }: { track: NewestSyncedTrack; hidden?: boolean }) {
   return (
     <Link
-      href={`/track/${track.id}`}
+      href={trackPath(track)}
       tabIndex={hidden ? -1 : undefined}
       className="klr-card flex w-56 flex-none flex-col gap-2.5 p-4 transition-colors hover:border-white/15"
     >

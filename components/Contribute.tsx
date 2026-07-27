@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlignLocal } from "./AlignLocal";
 import { detectFormat, parseByFormat, type ImportFormat } from "@/lib/formats";
 import { solvePow } from "@/lib/pow-client";
+import { trackPath } from "@/lib/track-slug";
 
 type Mode = "paste" | "ai" | "request";
 
@@ -277,7 +278,11 @@ function RequestSync() {
               <SyncStatusChip status={j.status} />
               {j.status === "done" && j.result_track_id && (
                 <Link
-                  href={`/track/${j.result_track_id}`}
+                  href={trackPath({
+                    id: j.result_track_id,
+                    artistName: j.artist_name,
+                    trackName: j.track_name,
+                  })}
                   className="text-[color:var(--klr-b)] hover:underline"
                 >
                   View track →
@@ -541,7 +546,10 @@ export function Contribute({
             {state.phase === "done" && state.trackId && (
               <>
                 {" "}
-                <Link href={`/track/${state.trackId}`} className="text-[color:var(--klr-b)] hover:text-[color:var(--klr-hi)]">
+                <Link
+                  href={trackPath({ id: state.trackId, artistName: artist, trackName: title })}
+                  className="text-[color:var(--klr-b)] hover:text-[color:var(--klr-hi)]"
+                >
                   View track →
                 </Link>
               </>

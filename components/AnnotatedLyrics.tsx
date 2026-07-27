@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LyricsPayload } from "@/lib/formats/types";
 import { anchorComments, type CommentAnchor } from "@/lib/comment-anchors";
@@ -47,6 +48,9 @@ export function AnnotatedLyrics({
   revisionId: number;
   payload: LyricsPayload;
 }) {
+  // Send sign-in back to the slug URL the reader is actually on, not a bare
+  // /track/<id> that would bounce through a redirect.
+  const pathname = usePathname();
   const [comments, setComments] = useState<CommentDto[] | null>(null);
   const [sel, setSel] = useState<{ anchor: number; focus: number } | null>(null);
   const [user, setUser] = useState<AuthUser>(undefined);
@@ -254,7 +258,7 @@ export function AnnotatedLyrics({
               ) : user === null ? (
                 <div className="space-y-2">
                   <Link
-                    href={`/login?next=${encodeURIComponent(`/track/${trackId}`)}`}
+                    href={`/login?next=${encodeURIComponent(pathname)}`}
                     className="btn btn-secondary btn-sm"
                   >
                     Sign in to comment

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { TierBadge } from "./TierBadge";
 import type { Source, Tier } from "@/lib/db/schema";
 import type { LyricsPayload } from "@/lib/formats/types";
+import { trackPath } from "@/lib/track-slug";
 import { parseVideoKey } from "@/lib/video-key";
 
 interface AdminComment {
@@ -701,7 +702,11 @@ export function AdminPanel() {
               )}
               {j.status === "done" && j.result_track_id && (
                 <a
-                  href={`/track/${j.result_track_id}`}
+                  href={trackPath({
+                    id: j.result_track_id,
+                    artistName: j.artist_name,
+                    trackName: j.track_name,
+                  })}
                   className="text-sm text-[color:var(--klr-b)] hover:underline"
                 >
                   View track →
@@ -730,7 +735,11 @@ export function AdminPanel() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm">
                   <a
-                    href={`/track/${c.track_id}`}
+                    href={trackPath({
+                      id: c.track_id,
+                      artistName: c.artist_name,
+                      trackName: c.track_name,
+                    })}
                     className="font-medium text-[color:var(--klr-b)] hover:underline"
                   >
                     {c.artist_name} — {c.track_name}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LibraryPageTrack } from "@/lib/db/queries";
+import { trackPath } from "@/lib/track-slug";
 import { TierBadge } from "./TierBadge";
 import { WordSyncBadge } from "./WordSyncBadge";
 
@@ -15,7 +16,7 @@ function formatDuration(seconds: number): string {
 function BrowserCard({ track }: { track: LibraryPageTrack }) {
   return (
     <Link
-      href={`/track/${track.id}`}
+      href={trackPath(track)}
       className="klr-card group flex flex-col gap-2.5 p-4 transition-colors hover:border-white/15"
     >
       <div className="min-w-0">

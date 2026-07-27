@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db/client";
 import { listMostUsedTracks, listMostWantedSongs } from "@/lib/db/queries";
 import { revisions, tracks } from "@/lib/db/schema";
 import { getContributors } from "@/lib/github";
+import { trackPath } from "@/lib/track-slug";
 import { ContributorsGrid } from "@/components/ContributorsGrid";
 import { KarafiltMark } from "@/components/KarafiltMark";
 import { KaralyrMark } from "@/components/KaralyrMark";
@@ -183,7 +184,7 @@ export default async function HomePage() {
                 {mostUsed.map((t) => (
                   <Link
                     key={t.id}
-                    href={`/track/${t.id}`}
+                    href={trackPath(t)}
                     className="klr-card group flex flex-col gap-3 p-4 transition-colors hover:border-white/15"
                   >
                     <div className="min-w-0">

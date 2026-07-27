@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { trackPath } from "@/lib/track-slug";
 
 interface JobState {
   status: "running" | "done" | "failed";
@@ -149,7 +150,11 @@ export function AlignLocal() {
               <span className="text-[color:var(--klr-hi)]">
                 ✅ Word-timed lyrics published!{" "}
                 <Link
-                  href={`/track/${job.result.trackId}`}
+                  href={trackPath({
+                    id: job.result.trackId,
+                    artistName: artist,
+                    trackName: track,
+                  })}
                   className="underline hover:text-[color:var(--color-text)]"
                 >
                   Open the track →

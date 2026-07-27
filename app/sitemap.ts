@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { isNotNull } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { tracks } from "@/lib/db/schema";
+import { trackPath } from "@/lib/track-slug";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://karalyr.com";
 
@@ -43,11 +44,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let trackEntries: MetadataRoute.Sitemap = [];
   try {
     const rows = await getDb()
-      .select({ id: tracks.id, createdAt: tracks.createdAt })
+      .select({
+        id: tracks.id,
+        artistName: tracks.artistName,
+        trackName: tracks.trackName,
+        createdAt: tracks.createdAt,
+      })
       .from(tracks)
       .where(isNotNull(tracks.bestRevisionId));
     trackEntries = rows.map((t) => ({
-      url: `${SITE_URL}/track/${t.id}`,
+      url: `${SITE_URL}${trackPath(t)}`,
       lastModified: new Date(t.createdAt),
       changeFrequency: "weekly" as const,
       priority: 0.8,

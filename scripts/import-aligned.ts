@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { getDb } from "../lib/db/client";
 import { findOrCreateTrack, insertRevision } from "../lib/db/queries";
 import { validatePayload } from "../lib/formats";
+import { trackPath } from "../lib/track-slug";
 
 /**
  * Import a worker/align.py payload as an auto_aligned revision.
@@ -51,7 +52,7 @@ async function main() {
     `Imported revision #${revision.id} (status ${revision.status}) on track #${trackRow.id} — ` +
       `${payload.lines.length} lines, word timing: ${payload.meta.has_word_timing}`
   );
-  console.log(`View it: http://localhost:3000/track/${trackRow.id}`);
+  console.log(`View it: http://localhost:3000${trackPath(trackRow)}`);
 }
 
 main().catch((err) => {
