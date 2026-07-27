@@ -13,6 +13,7 @@ import {
 import { verifyAndConsumeSolution } from "@/lib/pow";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { getKvStore } from "@/lib/stores";
+import { isBlockedSubmitter, TAKEDOWN_EMAIL } from "@/lib/takedown";
 
 const bodySchema = z.object({
   challenge: z.object({ prefix: z.string(), nonce: z.string() }),
@@ -53,6 +54,16 @@ export async function POST(req: Request) {
     RATE_LIMITS.publish.windowMs
   );
   if (!allowed) return apiError(429, "TooManyRequests", "Publish rate limit exceeded");
+
+  // Repeat-infringer policy (lib/takedown.ts). Checked before the PoW so a
+  // blocked submitter isn't made to burn CPU on a challenge that can't land.
+  if (await isBlockedSubmitter(getDb(), fingerprint)) {
+    return apiError(
+      403,
+      "SubmitterBlocked",
+      `This submitter is blocked from publishing after repeated rights complaints. Contact ${TAKEDOWN_EMAIL} if you believe that's wrong.`
+    );
+  }
 
   const verdict = await verifyAndConsumeSolution(store, body.challenge.prefix, body.challenge.nonce);
   if (!verdict.ok) {
