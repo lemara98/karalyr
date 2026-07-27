@@ -49,7 +49,7 @@ function translit(s: string): string {
 }
 
 /** Lowercased, diacritic/script-folded to ASCII letters. */
-function asciiFold(s: string): string {
+export function asciiFold(s: string): string {
   return translit(s || "")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
