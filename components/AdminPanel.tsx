@@ -199,6 +199,9 @@ export function AdminPanel() {
   const [rejectReason, setRejectReason] = useState("");
   const [editTarget, setEditTarget] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
+  const [editArtist, setEditArtist] = useState("");
+  const [editTrack, setEditTrack] = useState("");
+  const [editAlbum, setEditAlbum] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
   const loadSync = useCallback(async () => {
@@ -298,25 +301,44 @@ export function AdminPanel() {
     load();
   }
 
-  async function saveLyricsEdit(jobId: number) {
+  function openJobEdit(j: SyncJob) {
+    setEditTarget(j.id);
+    setEditText(j.plain_lyrics);
+    setEditArtist(j.artist_name);
+    setEditTrack(j.track_name);
+    setEditAlbum(j.album_name ?? "");
+  }
+
+  function closeJobEdit() {
+    setEditTarget(null);
+    setEditText("");
+    setEditArtist("");
+    setEditTrack("");
+    setEditAlbum("");
+  }
+
+  async function saveJobEdit(jobId: number) {
     setMessage(null);
     setEditSaving(true);
     const res = await fetch("/api/admin/sync-queue/edit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ job_id: jobId, lyrics: editText }),
+      body: JSON.stringify({
+        job_id: jobId,
+        lyrics: editText,
+        artist_name: editArtist.trim(),
+        track_name: editTrack.trim(),
+        album_name: editAlbum.trim() || null,
+      }),
     });
     const body = await res.json().catch(() => ({}));
     setEditSaving(false);
     setMessage(
       res.ok
-        ? `Sync job #${jobId}: lyrics corrected (${body.line_count} lines)`
+        ? `Sync job #${jobId}: correction saved (${body.line_count} lines)`
         : body.message ?? "Edit failed"
     );
-    if (res.ok) {
-      setEditTarget(null);
-      setEditText("");
-    }
+    if (res.ok) closeJobEdit();
     loadSync();
   }
 
@@ -532,13 +554,10 @@ export function AdminPanel() {
                       </button>
                       <button
                         className="btn btn-ghost btn-sm"
-                        onClick={() => {
-                          setEditTarget(editTarget === j.id ? null : j.id);
-                          setEditText(j.plain_lyrics);
-                        }}
-                        title="Correct the submitted lyrics before aligning"
+                        onClick={() => (editTarget === j.id ? closeJobEdit() : openJobEdit(j))}
+                        title="Correct the artist, title, album or lyrics before aligning"
                       >
-                        {editTarget === j.id ? "Cancel edit" : "Edit lyrics"}
+                        {editTarget === j.id ? "Cancel edit" : "Edit"}
                       </button>
                     </>
                   )}
@@ -567,28 +586,57 @@ export function AdminPanel() {
                 <JobEmbed videoKey={j.video_key} title={`${j.artist_name} — ${j.track_name}`} />
                 {editTarget === j.id ? (
                   <div className="min-w-0 flex-1 basis-56">
-                    <p className="klr-eyebrow mb-1.5 !text-[10px]">CORRECT THE LYRICS</p>
+                    <p className="klr-eyebrow mb-1.5 !text-[10px]">CORRECT THE SONG</p>
+                    <div className="mb-2 grid gap-2 sm:grid-cols-2">
+                      <input
+                        className="field !py-1.5"
+                        placeholder="Artist"
+                        value={editArtist}
+                        onChange={(e) => setEditArtist(e.target.value)}
+                        disabled={editSaving}
+                        aria-label="Artist name"
+                      />
+                      <input
+                        className="field !py-1.5"
+                        placeholder="Title"
+                        value={editTrack}
+                        onChange={(e) => setEditTrack(e.target.value)}
+                        disabled={editSaving}
+                        aria-label="Track title"
+                      />
+                      <input
+                        className="field !py-1.5 sm:col-span-2"
+                        placeholder="Album (optional)"
+                        value={editAlbum}
+                        onChange={(e) => setEditAlbum(e.target.value)}
+                        disabled={editSaving}
+                        aria-label="Album name"
+                      />
+                    </div>
                     <textarea
                       className="field min-h-56 w-full"
                       style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}
                       value={editText}
                       onChange={(e) => setEditText(e.target.value)}
                       disabled={editSaving}
+                      aria-label="Lyrics"
                     />
                     <div className="mt-2 flex items-center gap-2">
                       <button
                         className="btn btn-primary btn-sm"
-                        onClick={() => saveLyricsEdit(j.id)}
-                        disabled={editSaving || editText.trim() === ""}
+                        onClick={() => saveJobEdit(j.id)}
+                        disabled={
+                          editSaving ||
+                          editText.trim() === "" ||
+                          editArtist.trim() === "" ||
+                          editTrack.trim() === ""
+                        }
                       >
                         {editSaving ? "Saving…" : "Save correction"}
                       </button>
                       <button
                         className="btn btn-ghost btn-sm"
-                        onClick={() => {
-                          setEditTarget(null);
-                          setEditText("");
-                        }}
+                        onClick={closeJobEdit}
                         disabled={editSaving}
                       >
                         Cancel

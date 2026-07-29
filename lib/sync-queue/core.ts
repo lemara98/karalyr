@@ -515,39 +515,85 @@ export async function listSyncJobs(
   return query.orderBy(...order).limit(limit);
 }
 
-export type EditLyricsResult =
-  | { ok: true; lineCount: number }
-  | { ok: false; reason: "bad_lyrics" | "not_editable" };
+export interface EditJobPatch {
+  /** Plain text or LRC — timing tags are stripped, same as intake. */
+  lyrics?: string;
+  artistName?: string;
+  trackName?: string;
+  /** null clears the album. */
+  albumName?: string | null;
+}
+
+export type EditJobResult =
+  | { ok: true; lineCount: number | null }
+  | { ok: false; reason: "bad_lyrics" | "bad_metadata" | "duplicate_song" | "not_editable" };
 
 /**
- * Admin correction of a candidate's submitted lyrics — the text the aligner
- * will read. Same normalization and bounds as intake. Guarded update, same
- * as every other transition here: editable only while the job is waiting
- * (a processing job belongs to its worker; closed jobs are history).
+ * Admin correction of a candidate — the lyrics the aligner will read and/or
+ * the artist/track/album metadata (LRCLIB names often carry small mistakes).
+ * Same normalization and bounds as intake. Guarded update, same as every
+ * other transition here: editable only while the job is waiting (a processing
+ * job belongs to its worker; closed jobs are history).
+ *
+ * A rename recomputes song_key — the dedup identity — so a second want for
+ * the corrected song still collapses onto this job. If another active job
+ * already holds the corrected identity, the unique index refuses the rename
+ * ("duplicate_song") instead of silently forking demand.
  */
-export async function editJobLyrics(
+export async function editJob(
   db: Db,
   jobId: number,
-  rawLyrics: string,
+  patch: EditJobPatch,
   now: number
-): Promise<EditLyricsResult> {
-  const plainLyrics = stripToPlainLines(rawLyrics);
-  const lineCount = plainLyrics.split("\n").filter(Boolean).length;
-  if (plainLyrics.length > MAX_LYRICS_CHARS || lineCount < MIN_LYRIC_LINES) {
-    return { ok: false, reason: "bad_lyrics" };
+): Promise<EditJobResult> {
+  const set: Partial<typeof syncJobs.$inferInsert> = { updatedAt: now };
+
+  let lineCount: number | null = null;
+  if (patch.lyrics !== undefined) {
+    const plainLyrics = stripToPlainLines(patch.lyrics);
+    lineCount = plainLyrics.split("\n").filter(Boolean).length;
+    if (plainLyrics.length > MAX_LYRICS_CHARS || lineCount < MIN_LYRIC_LINES) {
+      return { ok: false, reason: "bad_lyrics" };
+    }
+    set.plainLyrics = plainLyrics;
   }
 
-  const updated = await db
-    .update(syncJobs)
-    .set({ plainLyrics, updatedAt: now })
-    .where(
-      and(
-        eq(syncJobs.id, jobId),
-        inArray(syncJobs.status, ["wanted", "pending_approval", "queued"])
+  const artistName = patch.artistName?.trim();
+  const trackName = patch.trackName?.trim();
+  if (artistName === "" || trackName === "") return { ok: false, reason: "bad_metadata" };
+  if (artistName !== undefined) set.artistName = artistName;
+  if (trackName !== undefined) set.trackName = trackName;
+
+  if (patch.albumName !== undefined) {
+    set.albumName = patch.albumName?.trim() || null;
+  }
+
+  if (artistName !== undefined || trackName !== undefined) {
+    // song_key derives from both names — fetch the untouched one to recompute.
+    const [job] = await db
+      .select({ artistName: syncJobs.artistName, trackName: syncJobs.trackName })
+      .from(syncJobs)
+      .where(eq(syncJobs.id, jobId));
+    if (!job) return { ok: false, reason: "not_editable" };
+    set.songKey = songKey(artistName ?? job.artistName, trackName ?? job.trackName);
+  }
+
+  try {
+    const updated = await db
+      .update(syncJobs)
+      .set(set)
+      .where(
+        and(
+          eq(syncJobs.id, jobId),
+          inArray(syncJobs.status, ["wanted", "pending_approval", "queued"])
+        )
       )
-    )
-    .returning({ id: syncJobs.id });
-  if (updated.length === 0) return { ok: false, reason: "not_editable" };
+      .returning({ id: syncJobs.id });
+    if (updated.length === 0) return { ok: false, reason: "not_editable" };
+  } catch (err) {
+    if (isUniqueViolation(err)) return { ok: false, reason: "duplicate_song" };
+    throw err;
+  }
   return { ok: true, lineCount };
 }
 
