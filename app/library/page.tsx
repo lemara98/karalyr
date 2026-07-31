@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { count, inArray, isNotNull, sql } from "drizzle-orm";
+import { count, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import {
   listLibraryTracks,
@@ -139,6 +139,7 @@ export default async function LibraryPage() {
   const [
     [trackStats],
     [readyStats],
+    [processedWeekStats],
     [revisionStats],
     [wantedStats],
     newest,
@@ -147,6 +148,10 @@ export default async function LibraryPage() {
   ] = await Promise.all([
     db.select({ n: count() }).from(tracks),
     db.select({ n: count() }).from(tracks).where(isNotNull(tracks.bestRevisionId)),
+    db
+      .select({ n: count() })
+      .from(revisions)
+      .where(gte(revisions.createdAt, Date.now() - 7 * 24 * 60 * 60 * 1000)),
     db.select({ n: count() }).from(revisions),
     db
       .select({ n: count() })
@@ -225,9 +230,9 @@ export default async function LibraryPage() {
               hint="Every duration is its own track"
             />
             <StatCard
-              label="READY TO SING"
-              value={readyStats.n.toLocaleString("en-US")}
-              hint="Word-synced karaoke lyrics"
+              label="LYRICS PROCESSED THIS WEEK"
+              value={processedWeekStats.n.toLocaleString("en-US")}
+              hint="New karaoke syncs in the last 7 days"
             />
             <StatCard
               label="SONGS WANTED"
