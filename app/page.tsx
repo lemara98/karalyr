@@ -42,7 +42,7 @@ const FEATURES = [
   },
   {
     title: "Publish to the library",
-    body: "Every submission becomes a public revision, served by a free LRCLIB-compatible API.",
+    body: "Every submission becomes a public revision, served by Karalyr's free open API.",
     icon: (
       <svg viewBox="0 0 20 20" aria-hidden="true" className="h-5 w-5">
         <path
@@ -150,7 +150,7 @@ export default async function HomePage() {
               className="mt-6.5 text-xs text-[color:var(--color-text-dim)]"
               style={{ fontFamily: "var(--font-mono)" }}
             >
-              Exports .lrc · LRCLIB-compatible API
+              Exports .lrc · free open API
             </p>
           </div>
           <div>

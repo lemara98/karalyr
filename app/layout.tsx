@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Karalyr — every word, right on time",
   description:
-    "The open karaoke lyrics database: word-level timed lyrics, community corrections, and a free LRCLIB-compatible API. A Karafilt sibling.",
+    "The open karaoke lyrics database: word-level timed lyrics, community corrections, and a free open lyrics API. A Karafilt sibling.",
 };
 
 const NAV_LINKS: NavLink[] = [
@@ -55,7 +55,6 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
     title: "COMMUNITY",
     links: [
       { label: "GitHub", href: "https://github.com/lemara98/karalyr" },
-      { label: "LRCLIB", href: "https://lrclib.net" },
       { label: "Contributors", href: "/contributors" },
       { label: "Sponsors", href: "/sponsors" },
       // Deliberately in the footer of every page: a rightsholder who can't

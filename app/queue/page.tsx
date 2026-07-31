@@ -166,16 +166,17 @@ export default async function QueuePage({
         <ul className="flex list-disc flex-col gap-2 pl-5 text-sm text-[color:var(--color-text-muted)]">
           <li>
             <strong className="font-medium text-[color:var(--color-text)]">
-              People listening does most of it.
+              The aligner does most of it.
             </strong>{" "}
-            Karafilt times lines while the song plays, and those timings are pooled across
-            everyone who plays it. Popular requests finish on their own.
+            Your request carries the candidate lyrics; the operator runs the offline
+            aligner, which listens to the song and times every word of them.
           </li>
           <li>
             <strong className="font-medium text-[color:var(--color-text)]">
-              Some get aligned directly.
+              Listening helps too.
             </strong>{" "}
-            Requests can also be run through the offline aligner for tighter timing.
+            Karafilt times lines while the song plays, and those timings are pooled across
+            everyone who plays it.
           </li>
           <li>
             <strong className="font-medium text-[color:var(--color-text)]">
