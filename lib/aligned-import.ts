@@ -35,8 +35,11 @@ export async function importAlignedPayload(
   input: AlignedImportInput
 ): Promise<AlignedImportResult> {
   // Karalyr stores word/syllable-synced lyrics only; an aligner run that
-  // produced no word timing has failed, whatever its exit code said.
-  if (!input.payload.meta.has_word_timing) {
+  // produced no word timing has failed, whatever its exit code said. The
+  // flag alone is not trusted — older aligners asserted it even for gutted
+  // output (non-Latin words silently dropped), so check the content too.
+  const hasWords = input.payload.lines.some((l) => l.words && l.words.length > 0);
+  if (!input.payload.meta.has_word_timing || input.payload.lines.length === 0 || !hasWords) {
     throw new FormatError("Aligned payload has no word timing — refusing to import");
   }
   const track = await findOrCreateTrack(db, {

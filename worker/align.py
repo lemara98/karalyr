@@ -295,16 +295,51 @@ def get_word_stamps_with_chars(vocals: Path, transcript_path: Path):
     return stamps
 
 
-def align_words(vocals: Path, lines: list[str], workdir: Path, legacy_stamps: bool = False):
+def align_words(
+    vocals: Path,
+    lines: list[str],
+    workdir: Path,
+    legacy_stamps: bool = False,
+    allow_partial: bool = False,
+):
     """Run forced alignment; returns per-line lists of (original_word, stamp)."""
     # One romanized word per surviving original word, so the returned stamps
     # fold back onto the original text by simple counting.
     per_line_words: list[list[str]] = []  # surviving ORIGINAL words per line
     transcript_lines: list[str] = []
+    # Words the romanizer erases entirely (non-Latin scripts) would otherwise
+    # vanish from the payload without a trace. Punctuation-only "words" are
+    # expected to drop; anything with letters that still romanizes to "" is
+    # unsupported input and must fail loudly, not import a gutted payload.
+    lettered_total = 0
+    dropped_lettered: list[str] = []
     for text in lines:
-        originals = [w for w in text.split() if romanize_word(w)]
+        raw = text.split()
+        originals = [w for w in raw if romanize_word(w)]
+        line_lettered = [w for w in raw if any(ch.isalpha() for ch in w)]
+        line_dropped = [w for w in line_lettered if not romanize_word(w)]
+        lettered_total += len(line_lettered)
+        dropped_lettered.extend(line_dropped)
+        if line_lettered and not originals and not allow_partial:
+            raise SystemExit(
+                f"[align] every word of a line contains unsupported characters "
+                f"(e.g. {' '.join(line_lettered[:5])!r}) — the aligner cannot process "
+                "this script yet; pass --allow-partial to skip such lines"
+            )
         per_line_words.append(originals)
         transcript_lines.append(" ".join(romanize_word(w) for w in originals))
+
+    if dropped_lettered and lettered_total:
+        lost = len(dropped_lettered) / lettered_total
+        if lost > 0.05 and not allow_partial:
+            sample = ", ".join(repr(w) for w in dropped_lettered[:5])
+            raise SystemExit(
+                f"[align] {len(dropped_lettered)}/{lettered_total} words contain "
+                f"unsupported characters and would be silently dropped ({sample}) — "
+                "refusing to produce a gutted alignment; pass --allow-partial to override"
+            )
+        if dropped_lettered:
+            print(f"[align] warning: dropping {len(dropped_lettered)} unsupported words")
 
     transcript_path = workdir / "transcript.txt"
     transcript_path.write_text("\n".join(transcript_lines), encoding="utf-8")
@@ -395,7 +430,13 @@ def to_payload(lines: list[str], folded, syllables: bool = True) -> dict:
     return {
         "format_version": 1,
         "lines": payload_lines,
-        "meta": {"language": None, "has_word_timing": True, "countdown_lines": []},
+        "meta": {
+            "language": None,
+            # Derived, not asserted: an alignment that produced no timed words
+            # must not masquerade as word-synced downstream.
+            "has_word_timing": any(l["words"] for l in payload_lines),
+            "countdown_lines": [],
+        },
     }
 
 
@@ -422,6 +463,11 @@ def main():
         action="store_true",
         help="use ctc_forced_aligner.get_word_stamps verbatim (implies --word-level)",
     )
+    ap.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help="proceed even when some words contain unsupported characters and drop",
+    )
     args = ap.parse_args()
 
     if args.audio and not args.audio.exists():
@@ -440,7 +486,13 @@ def main():
         else:
             audio = args.audio
         vocals = audio if args.no_demucs else run_demucs(audio, tmpdir)
-        folded = align_words(vocals, lines, tmpdir, legacy_stamps=args.legacy_stamps)
+        folded = align_words(
+            vocals,
+            lines,
+            tmpdir,
+            legacy_stamps=args.legacy_stamps,
+            allow_partial=args.allow_partial,
+        )
         # temp dir (downloaded audio + separated stems + transcript) is deleted on exit
 
     payload = to_payload(lines, folded, syllables=not (args.word_level or args.legacy_stamps))

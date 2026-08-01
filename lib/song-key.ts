@@ -7,7 +7,9 @@
  * `normalizeForMatch` in the Karafilt extension's shared/song-match.js, so
  * both sides derive the same identity for the same song. Keep the two in
  * sync; the folding tables below are the part that matters for this catalog
- * (Cyrillic and Balkan diacritics).
+ * (Cyrillic and Balkan diacritics). Non-Latin scripts (Devanagari, Thai,
+ * Han…) pass through unfolded — the key preserves them verbatim, it never
+ * erases them (an erased script would collide every such song onto one key).
  *
  * Pure and dependency-free — the API computes the key server-side on every
  * intake, so a client can never fragment dedup by sending its own.
@@ -61,11 +63,20 @@ const NOISE_WORDS =
   /\b(hd|hq|uhd|4k|8k|2160p|1440p|1080p?|720p|audio|video|lyric|lyrics|official|oficial|officiel|mv|live|vivo|directo|remaster|remastered|remix|rmx|stereo|mono|version|visualizer|visualiser|performance)\b/g;
 
 function collapse(s: string): string {
-  return s
-    .replace(/[^a-z0-9]+/g, " ")
-    // drop a trailing "feat …" / "featuring …" clause some titles embed
-    .replace(/\s(feat|ft|featuring|prod)\s.*$/, "")
-    .trim();
+  return (
+    s
+      // Keep letters, combining marks, and digits in EVERY script — \p{M}
+      // matters: Devanagari/Thai vowel signs are marks, and dropping them
+      // would conflate तुम/तिम. Latin input is pure ASCII after asciiFold,
+      // so Latin/Cyrillic keys are byte-identical to the old [a-z0-9] rule.
+      .replace(/[^\p{L}\p{M}\p{N}]+/gu, " ")
+      // drop a trailing "feat …" / "featuring …" clause some titles embed
+      .replace(/\s(feat|ft|featuring|prod)\s.*$/, "")
+      .trim()
+      // One key per song regardless of the input's normalization form:
+      // asciiFold's NFD pass leaves non-Latin text decomposed.
+      .normalize("NFC")
+  );
 }
 
 /**
@@ -73,17 +84,23 @@ function collapse(s: string): string {
  *
  * Falls back to the un-stripped fold when removing noise words would empty
  * the string — a band actually called "Live" must not normalize to "".
+ * The last resort is the raw lowercased string ("|" excluded): a title that
+ * is entirely symbols ("!!!", "?") must still key distinctly, never as "".
  */
 export function normalizeForMatch(s: string | null | undefined): string {
   const folded = asciiFold(s || "");
   const stripped = collapse(folded.replace(NOISE_WORDS, " "));
-  return stripped || collapse(folded);
+  return (
+    stripped ||
+    collapse(folded) ||
+    (s || "").toLowerCase().replace(/\|/g, " ").replace(/\s+/g, " ").trim()
+  );
 }
 
 /**
  * Dedup identity for a song: "<artist>|<track>", both normalized. The
- * separator can't collide with field content because normalization leaves
- * only [a-z0-9 ].
+ * separator can't collide with field content because no normalization path
+ * ever emits "|".
  */
 export function songKey(artist: string, track: string): string {
   return `${normalizeForMatch(artist)}|${normalizeForMatch(track)}`;

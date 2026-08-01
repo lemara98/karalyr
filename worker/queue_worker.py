@@ -60,6 +60,7 @@ TAIL_LINES = 40
 PERMANENT_MARKERS = (
     "aligner returned",
     "no lyric lines",
+    "unsupported characters",
     "video unavailable",
     "private video",
     "sign in to confirm your age",

@@ -41,10 +41,31 @@ describe("normalizeForMatch", () => {
     expect(normalizeForMatch("Video")).toBe("video");
   });
 
-  it("returns empty for empty-ish input", () => {
+  it("returns empty only for genuinely empty input", () => {
     expect(normalizeForMatch("")).toBe("");
     expect(normalizeForMatch(null)).toBe("");
-    expect(normalizeForMatch("   ---   ")).toBe("");
+    // Symbol-only titles are real ("!!!" the band, "?" the album) — they keep
+    // their raw form instead of collapsing to "", which would merge them all.
+    expect(normalizeForMatch("   ---   ")).toBe("---");
+    expect(normalizeForMatch("!!!")).not.toBe(normalizeForMatch("?"));
+  });
+
+  it("preserves non-Latin scripts instead of erasing them", () => {
+    expect(normalizeForMatch("तुम ही हो")).toBe("तुम ही हो");
+    expect(normalizeForMatch("เธอคือของขวัญ")).toBe("เธอคือของขวัญ");
+    expect(normalizeForMatch("月亮代表我的心")).toBe("月亮代表我的心");
+  });
+
+  it("keeps combining vowel signs so near-identical words stay distinct", () => {
+    // तुम vs तिम differ only in a \p{M} matra — dropping marks would merge them.
+    expect(normalizeForMatch("तुम")).not.toBe(normalizeForMatch("तिम"));
+  });
+
+  it("is stable across Unicode normalization forms", () => {
+    const title = "क़यामत से क़यामत तक";
+    expect(normalizeForMatch(title.normalize("NFD"))).toBe(
+      normalizeForMatch(title.normalize("NFC"))
+    );
   });
 });
 
@@ -64,7 +85,15 @@ describe("songKey", () => {
   });
 
   it("does not let field content collide across the separator", () => {
-    // Normalization leaves only [a-z0-9 ], so "a|b" can never be forged.
+    // No normalization path emits "|", so "a|b" can never be forged.
     expect(songKey("a b", "c")).not.toBe(songKey("a", "b c"));
+  });
+
+  it("gives different non-Latin songs different keys", () => {
+    // Regression: the old [a-z0-9] collapse erased whole scripts, so EVERY
+    // Devanagari/Thai/Han request keyed to "|" and collided in the queue.
+    expect(songKey("अरिजीत सिंह", "तुम ही हो")).not.toBe(songKey("श्रेया घोषाल", "सुन रहा है"));
+    expect(songKey("อิ้งค์ วรันธร", "เธอคือของขวัญ")).not.toBe(songKey("เบิร์ด ธงไชย", "คู่กัด"));
+    expect(songKey("鄧麗君", "月亮代表我的心")).not.toBe(songKey("鄧麗君", "甜蜜蜜"));
   });
 });
