@@ -13,6 +13,15 @@ import type { LyricsPayload } from "@/lib/formats/types";
 import { wordFillPercent } from "@/lib/formats";
 import { gapSegments } from "@/lib/gaps";
 
+/**
+ * Highlights fire this much ahead of the playback clock. Compensates two
+ * constant lags: the MMS/CTC aligner marks word onsets 1-3 frames (20-60ms)
+ * after the true acoustic onset, and the rAF-driven state paints one frame
+ * (~17ms) behind the audio. Applied only while playing — paused scrubbing
+ * and seeks stay exact.
+ */
+export const LYRIC_LEAD_MS = 50;
+
 function fmt(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
@@ -123,7 +132,9 @@ export function LyricsView({
   captionLead: string;
   fill?: boolean;
 }) {
-  const { timeMs } = clock;
+  // The transport bar shows the real clock; every highlight below reads the
+  // led time so words light up when they are actually heard.
+  const timeMs = clock.playing ? clock.timeMs + LYRIC_LEAD_MS : clock.timeMs;
   const activeRef = useRef<HTMLElement | null>(null);
   const linesRef = useRef<HTMLDivElement | null>(null);
 
