@@ -61,6 +61,16 @@ describe("normalizeForMatch", () => {
     expect(normalizeForMatch("तुम")).not.toBe(normalizeForMatch("तिम"));
   });
 
+  it("agrees with the extension's normalizer on the shared parity vectors", () => {
+    // Pinned in BOTH repos (extension: test/song-match.test.mjs) so the two
+    // normalizers can't silently drift on non-Latin content. Known
+    // divergence: đ (extension "d", here "dj") — deliberately not asserted.
+    expect(normalizeForMatch("तुम ही हो")).toBe("तुम ही हो");
+    expect(normalizeForMatch("เธอคือของขวัญ")).toBe("เธอคือของขวัญ");
+    expect(normalizeForMatch("月亮代表我的心")).toBe("月亮代表我的心");
+    expect(normalizeForMatch("Здраво")).toBe("zdravo");
+  });
+
   it("is stable across Unicode normalization forms", () => {
     const title = "क़यामत से क़यामत तक";
     expect(normalizeForMatch(title.normalize("NFD"))).toBe(
