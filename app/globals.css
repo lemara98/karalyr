@@ -385,6 +385,35 @@ input[type="range"]::-moz-range-thumb {
   color: #ffffff;
   text-shadow: 0 0 20px rgba(255, 107, 157, 0.6);
 }
+/* Focus mode enlarges the lyric lines, so the count-in scales with them. */
+.kf-lyrics.focus-mode .klr-countin {
+  gap: 20px;
+}
+.kf-lyrics.focus-mode .klr-countin-track {
+  height: 22px;
+}
+.kf-lyrics.focus-mode .klr-countin-num {
+  font-size: 52px;
+}
+/* Phones: the reader is at arm's length, so the bar gets more of the width
+   and the number steps up another size. */
+@media (max-width: 640px) {
+  .kf-lyrics .klr-countin {
+    padding: 0 24px;
+  }
+  .kf-lyrics .klr-countin-track {
+    height: 20px;
+  }
+  .kf-lyrics .klr-countin-num {
+    font-size: 44px;
+  }
+  .kf-lyrics.focus-mode .klr-countin-track {
+    height: 26px;
+  }
+  .kf-lyrics.focus-mode .klr-countin-num {
+    font-size: 58px;
+  }
+}
 
 /* Focus mode (from the Karafilt side panel): three lines at a time, centered
    and enlarged; pages swap when the active line crosses a boundary. */
@@ -395,6 +424,9 @@ input[type="range"]::-moz-range-thumb {
   overflow: hidden;
   -webkit-mask-image: none;
   mask-image: none;
+  /* During a count-in no page is current, so without this the card would
+     collapse and clip the count-in overlay to a sliver. */
+  min-height: 260px;
 }
 .kf-lyrics.focus-mode .line {
   display: none;
