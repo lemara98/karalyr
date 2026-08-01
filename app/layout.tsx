@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Analytics } from "@vercel/analytics/next";
-import { Geist_Mono, Space_Grotesk } from "next/font/google";
+import {
+  Geist_Mono,
+  Noto_Sans_Devanagari,
+  Noto_Sans_TC,
+  Noto_Sans_Thai,
+  Space_Grotesk,
+} from "next/font/google";
 import { Logo } from "@/components/Logo";
 import { KaralyrMark } from "@/components/KaralyrMark";
 import { HeaderAuth } from "@/components/HeaderAuth";
@@ -9,12 +15,31 @@ import { type NavLink } from "@/components/MobileMenu";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin", "latin-ext"],
+  // "vietnamese" ships in Space Grotesk itself — without it Vietnamese lyrics
+  // fell through to the system font mid-word.
+  subsets: ["latin", "latin-ext", "vietnamese"],
   variable: "--font-space-grotesk",
 });
 const geistMono = Geist_Mono({
   subsets: ["latin", "latin-ext"],
   variable: "--font-geist-mono",
+});
+// Script fallbacks for lyrics content. next/font emits unicode-range for
+// each, so the extra families download only on pages that render the script.
+const notoDevanagari = Noto_Sans_Devanagari({
+  subsets: ["devanagari"],
+  variable: "--font-devanagari",
+  display: "swap",
+});
+const notoThai = Noto_Sans_Thai({
+  subsets: ["thai"],
+  variable: "--font-thai",
+  display: "swap",
+});
+const notoTC = Noto_Sans_TC({
+  subsets: ["latin"],
+  variable: "--font-tc",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -67,7 +92,10 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      className={`${spaceGrotesk.variable} ${geistMono.variable} ${notoDevanagari.variable} ${notoThai.variable} ${notoTC.variable}`}
+    >
       <body>
         <header className="border-b border-white/5">
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">

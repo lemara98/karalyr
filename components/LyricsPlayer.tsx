@@ -12,6 +12,7 @@ import {
 import type { LyricsPayload } from "@/lib/formats/types";
 import { wordFillPercent } from "@/lib/formats";
 import { gapSegments } from "@/lib/gaps";
+import { wordSeparators } from "@/lib/word-separators";
 
 /**
  * Highlights fire this much ahead of the playback clock. Compensates two
@@ -160,6 +161,10 @@ export function LyricsView({
   }, []);
 
   const gaps = useMemo(() => gapSegments(payload.lines), [payload]);
+  // Per-line separators between word spans, derived from the line text once
+  // per payload (this render runs every frame): spaces for Latin, "" for
+  // Chinese char-words and other unspaced scripts.
+  const lineSeps = useMemo(() => payload.lines.map(wordSeparators), [payload]);
   const activeGap = gaps.find((g) => timeMs >= g.start && timeMs < g.end) ?? null;
 
   // Count-in: the bar FILLS toward the downbeat while the number counts the
@@ -290,9 +295,10 @@ export function LyricsView({
                     // --word-progress. With syllable timing the wipe
                     // follows the measured syllable boundaries.
                     const fill = state === "singing" ? wordFillPercent(w, timeMs) : undefined;
-                    // The separating space lives OUTSIDE the span: the
-                    // .word spans are inline-block, which trims trailing
-                    // whitespace inside them.
+                    // The separator lives OUTSIDE the span (the .word spans
+                    // are inline-block, which trims trailing whitespace) and
+                    // comes from the line text itself: a space for Latin,
+                    // nothing for Chinese/Thai (lib/word-separators.ts).
                     return (
                       <Fragment key={j}>
                         <span
@@ -305,7 +311,7 @@ export function LyricsView({
                         >
                           {w.text}
                         </span>
-                        {j < line.words!.length - 1 ? " " : ""}
+                        {lineSeps[i]?.[j] ?? (j < line.words!.length - 1 ? " " : "")}
                       </Fragment>
                     );
                   })

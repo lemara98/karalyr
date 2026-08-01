@@ -14,10 +14,14 @@
   --klr-b: #ff6b9d;
   --klr-hi: #ff8fb3;
 
+  /* Script fallbacks (Devanagari/Thai/Traditional Chinese) sit after the
+     Latin faces; next/font scopes them by unicode-range so they only load
+     when those scripts actually render. */
+  --font-scripts: var(--font-devanagari), var(--font-thai), var(--font-tc);
   --font-sans: var(--font-space-grotesk), "Segoe UI", -apple-system,
-    BlinkMacSystemFont, Roboto, sans-serif;
-  --font-display: var(--font-space-grotesk), "Segoe UI", sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+    BlinkMacSystemFont, Roboto, var(--font-scripts), sans-serif;
+  --font-display: var(--font-space-grotesk), "Segoe UI", var(--font-scripts), sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, Menlo, var(--font-scripts), monospace;
 
   color-scheme: dark;
   accent-color: var(--klr-b);
@@ -300,7 +304,8 @@ input[type="range"]::-moz-range-thumb {
 }
 .kf-lyrics .line {
   font-size: 15px;
-  line-height: 1.5;
+  /* 1.7 not 1.5: Devanagari matras / stacked Thai marks clip at 1.5. */
+  line-height: 1.7;
   padding: 8px 12px;
   color: #8b90b0;
   text-align: center;
@@ -431,7 +436,7 @@ input[type="range"]::-moz-range-thumb {
 .kf-lyrics.focus-mode .line {
   display: none;
   font-size: 22px;
-  line-height: 1.45;
+  line-height: 1.6;
 }
 .kf-lyrics.focus-mode .line.page-current {
   display: block;

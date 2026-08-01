@@ -57,10 +57,26 @@ export function payloadToSyncedLyrics(
     : serializeLrc(payload);
 }
 
+// Rendered-width proxy for a syllable: grapheme clusters, not UTF-16 units.
+// A Devanagari matra or conjunct is extra code units with ~no advance width,
+// so counting units makes the sweep lurch mid-word; graphemes track what the
+// eye sees. (Astral chars stop counting double for free.)
+const graphemeSegmenter =
+  typeof Intl !== "undefined" && "Segmenter" in Intl
+    ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+    : null;
+
+function visualLength(text: string): number {
+  if (!graphemeSegmenter) return text.length;
+  let n = 0;
+  for (const _ of graphemeSegmenter.segment(text)) n++;
+  return n;
+}
+
 /**
  * 0-100 sweep position for the word being sung at `timeMs`. With syllable
  * timing the fill follows the measured syllable boundaries (weighted by
- * text length, which tracks rendered width); otherwise it wipes linearly
+ * grapheme count, which tracks rendered width); otherwise it wipes linearly
  * across the word's own start→end window.
  */
 export function wordFillPercent(w: Word, timeMs: number): number {
@@ -69,15 +85,15 @@ export function wordFillPercent(w: Word, timeMs: number): number {
     if (w.end_ms <= w.start_ms) return 100;
     return Math.round(Math.min(100, Math.max(0, (100 * (timeMs - w.start_ms)) / (w.end_ms - w.start_ms))));
   }
-  const total = syls.reduce((n, s) => n + s.text.length, 0) || 1;
+  const total = syls.reduce((n, s) => n + visualLength(s.text), 0) || 1;
   let done = 0;
   for (const s of syls) {
     if (timeMs >= s.end_ms) {
-      done += s.text.length;
+      done += visualLength(s.text);
       continue;
     }
     if (timeMs >= s.start_ms && s.end_ms > s.start_ms) {
-      done += (s.text.length * (timeMs - s.start_ms)) / (s.end_ms - s.start_ms);
+      done += (visualLength(s.text) * (timeMs - s.start_ms)) / (s.end_ms - s.start_ms);
     }
     break;
   }
