@@ -85,6 +85,8 @@ interface SyncJob {
   track_name: string;
   album_name: string | null;
   duration_seconds: number | null;
+  /** ISO 639-1 lyrics language (sniffed or hinted at intake); null = Latin default. */
+  language: string | null;
   plain_lyrics: string;
   submitter_user_id: string | null;
   submitter_name: string | null;
@@ -454,6 +456,29 @@ export function AdminPanel() {
           so only promote once you have a lawful way to get its audio.
         </p>
 
+        {/* Per-language demand at a glance — which market wants attention next. */}
+        {syncWanted && syncWanted.length > 0 && (
+          <p className="mb-3 flex flex-wrap gap-2 text-xs">
+            {Object.entries(
+              syncWanted.reduce<Record<string, number>>((acc, j) => {
+                const k = j.language ?? "latin/default";
+                acc[k] = (acc[k] ?? 0) + 1;
+                return acc;
+              }, {})
+            )
+              .sort((a, b) => b[1] - a[1])
+              .map(([lang, n]) => (
+                <span
+                  key={lang}
+                  className="rounded-full border border-white/10 px-2 py-0.5 text-[color:var(--color-text-muted)]"
+                  style={{ fontFamily: "var(--font-mono)" }}
+                >
+                  {lang}: {n}
+                </span>
+              ))}
+          </p>
+        )}
+
         {syncWanted?.length === 0 && (
           <p className="text-sm text-[color:var(--color-text-dim)]">No songs requested.</p>
         )}
@@ -472,6 +497,14 @@ export function AdminPanel() {
                   <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[color:var(--klr-a)]">
                     {j.source}
                   </span>
+                  {j.language && (
+                    <span
+                      className="ml-1.5 rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[color:var(--klr-b)]"
+                      title="Lyrics language — passed to the aligner as --language"
+                    >
+                      {j.language}
+                    </span>
+                  )}
                   <span className="ml-2 text-sm text-[color:var(--color-text-dim)]">
                     job #{j.id} · {j.voters} {j.voters === 1 ? "want" : "wants"} · first asked
                     by{" "}

@@ -17,6 +17,7 @@ function jobDto(j: SyncJob) {
     track_name: j.trackName,
     album_name: j.albumName,
     duration_seconds: j.durationSeconds,
+    language: j.language,
     submitter_user_id: j.submitterUserId,
     submitter_name: j.submitterName,
     attempts: j.attempts,
