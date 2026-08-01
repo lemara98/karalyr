@@ -60,9 +60,11 @@ LANGUAGES = {
     "th": "tha", "km": "khm", "lo": "lao",
 }
 # No word boundaries in these scripts and no tokenizer wired up yet — refuse
-# rather than emit one giant "word" per line. (message text is matched by
+# word-level rather than emit one giant "word" per line; --line-level is the
+# honest path for these. Thai is NOT listed: pythainlp's newmm dictionary
+# tokenizer supplies its word boundaries. (message text is matched by
 # queue_worker.PERMANENT_MARKERS)
-UNSUPPORTED_WORD_LEVEL = {"th", "km", "lo"}
+UNSUPPORTED_WORD_LEVEL = {"km", "lo"}
 
 HAN_RE = re.compile(r"[㐀-䶿一-鿿豈-﫿]")
 
@@ -105,11 +107,26 @@ def romanize_word(word: str, language: str | None = None) -> str:
     return "".join(romanize_char(ch, language) for ch in word)
 
 
+THAI_RE = re.compile(r"[\u0E00-\u0E7F]")
+
+
 def split_line_words(text: str, language: str | None = None) -> list[str]:
     """A line's words, in singing order. Whitespace-separated everywhere
-    except Chinese, where unspaced Han runs sing one character at a time —
-    each Han char becomes its own word (Latin runs inside stay together)."""
+    except: Chinese, where unspaced Han runs sing one character at a time
+    (each Han char becomes its own word, Latin runs inside stay together);
+    and Thai, where pythainlp's newmm dictionary segmentation supplies the
+    word boundaries the script doesn't write."""
     words = text.split()
+    if language == "th":
+        from pythainlp.tokenize import word_tokenize  # lazy: th runs only
+
+        thai_out: list[str] = []
+        for w in words:
+            if THAI_RE.search(w):
+                thai_out.extend(t for t in word_tokenize(w, engine="newmm") if t.strip())
+            else:
+                thai_out.append(w)
+        return thai_out
     if language != "zh":
         return words
     out: list[str] = []
@@ -349,6 +366,7 @@ def align_words(
     legacy_stamps: bool = False,
     allow_partial: bool = False,
     language: str | None = None,
+    line_level: bool = False,
 ):
     """Run forced alignment; returns per-line lists of (original_word, stamp)."""
     # One romanized word per surviving original word, so the returned stamps
@@ -362,7 +380,10 @@ def align_words(
     lettered_total = 0
     dropped_lettered: list[str] = []
     for text in lines:
-        raw = split_line_words(text, language)
+        # Line-level mode: the whole line is one alignment unit — used for
+        # scripts with no word tokenizer (km/lo). Line times are recovered;
+        # no word timing is claimed.
+        raw = [text] if line_level else split_line_words(text, language)
         originals = [w for w in raw if romanize_word(w, language)]
         line_lettered = [w for w in raw if any(ch.isalpha() for ch in w)]
         line_dropped = [w for w in line_lettered if not romanize_word(w, language)]
@@ -416,7 +437,11 @@ def align_words(
 
 
 def to_payload(
-    lines: list[str], folded, syllables: bool = True, language: str | None = None
+    lines: list[str],
+    folded,
+    syllables: bool = True,
+    language: str | None = None,
+    line_level: bool = False,
 ) -> dict:
     payload_lines = []
     for text, pairs in zip(lines, folded):
@@ -477,6 +502,11 @@ def to_payload(
         else:
             line["end_ms"] = max(sung_end, line["start_ms"] + 10)
 
+    if line_level:
+        # The single per-line pseudo-word only carried the line's span.
+        for l in payload_lines:
+            del l["words"]
+
     return {
         "format_version": 1,
         "lines": payload_lines,
@@ -484,7 +514,7 @@ def to_payload(
             "language": language,
             # Derived, not asserted: an alignment that produced no timed words
             # must not masquerade as word-synced downstream.
-            "has_word_timing": any(l["words"] for l in payload_lines),
+            "has_word_timing": any(l.get("words") for l in payload_lines),
             "countdown_lines": [],
         },
     }
@@ -523,16 +553,23 @@ def main():
         help="ISO 639-1 code of the lyrics language (hi, vi, id, zh, ...); "
         "enables script-aware romanization — omit for Latin/Balkan lyrics",
     )
+    ap.add_argument(
+        "--line-level",
+        action="store_true",
+        help="align whole lines only (no word timing) — the honest mode for "
+        "scripts with no word tokenizer (km/lo)",
+    )
     args = ap.parse_args()
 
     language = args.language.lower().strip() if args.language else None
     if language is not None and language not in LANGUAGES:
         known = ", ".join(sorted(LANGUAGES))
         raise SystemExit(f"[align] unknown --language {language!r} (known: {known})")
-    if language in UNSUPPORTED_WORD_LEVEL:
+    if language in UNSUPPORTED_WORD_LEVEL and not args.line_level:
         raise SystemExit(
             f"[align] word-level alignment for language {language!r} is not yet "
-            "supported (the script has no word boundaries; unsupported characters)"
+            "supported (the script has no word boundaries; unsupported characters) "
+            "— run with --line-level for line-synced output"
         )
     if args.audio and not args.audio.exists():
         raise SystemExit(f"[align] audio not found: {args.audio}")
@@ -557,17 +594,21 @@ def main():
             legacy_stamps=args.legacy_stamps,
             allow_partial=args.allow_partial,
             language=language,
+            line_level=args.line_level,
         )
         # temp dir (downloaded audio + separated stems + transcript) is deleted on exit
 
     payload = to_payload(
         lines,
         folded,
-        syllables=not (args.word_level or args.legacy_stamps),
+        syllables=not (args.word_level or args.legacy_stamps or args.line_level),
         language=language,
+        line_level=args.line_level,
     )
-    n_words = sum(len(l["words"]) for l in payload["lines"])
-    n_syls = sum(len(w.get("syllables", [])) for l in payload["lines"] for w in l["words"])
+    n_words = sum(len(l.get("words", [])) for l in payload["lines"])
+    n_syls = sum(
+        len(w.get("syllables", [])) for l in payload["lines"] for w in l.get("words", [])
+    )
     if n_syls:
         print(f"[align] syllable timing on {n_syls} syllables (from the same alignment pass)")
     args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")

@@ -19,3 +19,5 @@ ctc-forced-aligner
 yt-dlp
 # script-aware romanization for --language runs (hi/vi/id/zh/...)
 unidecode
+# Thai word segmentation (newmm) for --language th
+pythainlp

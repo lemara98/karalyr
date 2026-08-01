@@ -74,10 +74,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       duration,
       videoUrl: job.videoUrl,
       submitterFingerprint: "system:sync-queue",
+      // km/lo have no word tokenizer — the worker runs the aligner in
+      // --line-level mode and the resulting line-synced payload is the
+      // deliverable, not a failed word alignment.
+      allowLineLevel: job.language === "km" || job.language === "lo",
     });
   } catch (err) {
-    // Word-timing guard: a line-level payload is a failed alignment; the 400
-    // makes the daemon issue a permanent /fail for this job.
+    // Word-timing guard: an unexpected line-level payload is a failed
+    // alignment; the 400 makes the daemon issue a permanent /fail.
     if (err instanceof FormatError) return apiError(400, "InvalidPayload", err.message);
     throw err;
   }

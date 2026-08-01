@@ -193,6 +193,10 @@ def run_job(job, audio_path):
                         "--lyrics", str(lyrics_path), "--out", str(out_path)]
                 if job.get("language"):
                     argv += ["--language", str(job["language"])]
+                    # Scripts with no word tokenizer get honest line-sync
+                    # instead of a permanent refusal.
+                    if job["language"] in ("km", "lo"):
+                        argv.append("--line-level")
                 proc = subprocess.Popen(
                     argv,
                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,

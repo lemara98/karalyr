@@ -14,6 +14,13 @@ export interface AlignedImportInput {
   /** Video URL/id the audio came from; linked so by-video lookups resolve. */
   videoUrl?: string | null;
   submitterFingerprint: string;
+  /**
+   * Accept a deliberate line-level payload (has_word_timing false, timed
+   * lines, no words) — the aligner's --line-level mode for scripts with no
+   * word tokenizer (km/lo). Without this flag such payloads are rejected as
+   * failed word alignments.
+   */
+  allowLineLevel?: boolean;
 }
 
 export interface AlignedImportResult {
@@ -38,8 +45,17 @@ export async function importAlignedPayload(
   // produced no word timing has failed, whatever its exit code said. The
   // flag alone is not trusted — older aligners asserted it even for gutted
   // output (non-Latin words silently dropped), so check the content too.
+  // Exception: an EXPLICIT line-level run (aligner --line-level for km/lo)
+  // is honest line-synced output, accepted only when the caller opts in.
   const hasWords = input.payload.lines.some((l) => l.words && l.words.length > 0);
-  if (!input.payload.meta.has_word_timing || input.payload.lines.length === 0 || !hasWords) {
+  const deliberateLineLevel =
+    input.allowLineLevel === true &&
+    !input.payload.meta.has_word_timing &&
+    input.payload.lines.length > 0;
+  if (
+    !deliberateLineLevel &&
+    (!input.payload.meta.has_word_timing || input.payload.lines.length === 0 || !hasWords)
+  ) {
     throw new FormatError("Aligned payload has no word timing — refusing to import");
   }
   const track = await findOrCreateTrack(db, {
