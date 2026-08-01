@@ -5,6 +5,7 @@ import {
   runningAlignJob,
   startAlignJob,
 } from "@/lib/align-local";
+import { detectLyricsLanguage } from "@/lib/lang-detect";
 
 // Local-only: spawns the alignment worker on this machine. Hidden unless
 // ENABLE_LOCAL_ALIGN=1 and the worker venv exists — never enable on a
@@ -22,6 +23,8 @@ const bodySchema = z.object({
   track: z.string().max(500).optional(),
   album: z.string().max(500).optional(),
   duration: z.number().positive().max(24 * 60 * 60).optional(),
+  // ISO 639-1; auto-sniffed from the lyrics when omitted.
+  language: z.string().max(10).optional(),
 });
 
 export async function POST(req: Request) {
@@ -55,6 +58,7 @@ export async function POST(req: Request) {
     track: body.track,
     album: body.album,
     duration: body.duration,
+    language: body.language?.trim().toLowerCase() || detectLyricsLanguage(body.lyrics) || undefined,
   });
   return Response.json({ job_id: job.id }, { status: 202 });
 }

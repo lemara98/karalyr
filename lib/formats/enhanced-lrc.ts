@@ -23,10 +23,19 @@ const WORD_TAG = /<(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?>/g;
  */
 export function parseEnhancedLrc(input: string): LyricsPayload {
   const parsed: { start_ms: number; text: string; words: Word[] }[] = [];
+  let language: string | null = null;
 
   for (const rawLine of input.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (line === "") continue;
+
+    // The only meta tag this parser cares about: [la:]/[lang:] carries the
+    // lyrics language through to payload.meta.language (mirrors lrc.ts).
+    const langTag = line.match(/^\[(?:la|lang):\s*([A-Za-z][A-Za-z-]{1,19})\s*\]$/i);
+    if (langTag) {
+      language = langTag[1].toLowerCase();
+      continue;
+    }
 
     const lineTag = line.match(LINE_TAG_START);
     if (!lineTag) continue;
@@ -132,7 +141,7 @@ export function parseEnhancedLrc(input: string): LyricsPayload {
   return {
     format_version: 1,
     lines,
-    meta: { language: null, has_word_timing: anyWords, countdown_lines: [] },
+    meta: { language, has_word_timing: anyWords, countdown_lines: [] },
   };
 }
 

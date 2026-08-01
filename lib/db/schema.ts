@@ -58,6 +58,10 @@ export const tracks = sqliteTable(
     albumName: text("album_name"),
     durationSeconds: real("duration_seconds").notNull(),
     bestRevisionId: integer("best_revision_id"),
+    // ISO 639-1 language of the lyrics, denormalized from the best revision's
+    // payload.meta.language whenever the best revision is recomputed. Null =
+    // unknown/legacy. Powers the library language filter and og:locale.
+    language: text("language"),
     createdAt: integer("created_at")
       .notNull()
       .default(sql`(unixepoch() * 1000)`),
@@ -216,6 +220,10 @@ export const syncJobs = sqliteTable(
     albumName: text("album_name"),
     // Nullable: yt-dlp metadata backfills it at complete time if missing.
     durationSeconds: real("duration_seconds"),
+    // ISO 639-1 lyrics language (hi, vi, zh, …). Explicit intake hint or
+    // Unicode-block sniff of the lyrics (lib/lang-detect.ts); null = Latin
+    // catalog default. Passed to the aligner as --language.
+    language: text("language"),
     // LRC/word tags already stripped at intake — stored exactly as the
     // aligner will read it (see stripToPlainLines).
     plainLyrics: text("plain_lyrics").notNull(),

@@ -80,9 +80,22 @@ export async function computeBestRevision(db: Db, trackId: number): Promise<numb
       ? await db.select().from(signals).where(inArray(signals.revisionId, revIds))
       : [];
   const best = rankRevisions(revs, sigs);
+  // tracks.language rides along: denormalized from the best revision's
+  // payload so the library can filter by language without JSON scans.
+  let language: string | null = null;
+  if (best) {
+    try {
+      const meta = JSON.parse(best.payload)?.meta;
+      if (typeof meta?.language === "string" && meta.language.trim()) {
+        language = meta.language.trim().toLowerCase();
+      }
+    } catch {
+      // unparseable payload — leave language unknown
+    }
+  }
   await db
     .update(tracks)
-    .set({ bestRevisionId: best?.id ?? null })
+    .set({ bestRevisionId: best?.id ?? null, language })
     .where(eq(tracks.id, trackId));
   return best?.id ?? null;
 }

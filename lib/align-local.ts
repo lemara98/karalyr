@@ -31,6 +31,8 @@ export interface AlignJobInput {
   track?: string;
   album?: string;
   duration?: number;
+  /** ISO 639-1 lyrics language (hi, vi, zh, …); omit for Latin/Balkan. */
+  language?: string;
 }
 
 export interface AlignJob {
@@ -82,10 +84,15 @@ export function startAlignJob(input: AlignJobInput): AlignJob {
   const sourceArgs = input.youtubeUrl
     ? ["--youtube", input.youtubeUrl]
     : ["--audio", input.audioPath!];
-  const child = spawn(PYTHON, [SCRIPT, ...sourceArgs, "--lyrics", lyricsPath, "--out", outPath], {
-    cwd: process.cwd(),
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const languageArgs = input.language ? ["--language", input.language] : [];
+  const child = spawn(
+    PYTHON,
+    [SCRIPT, ...sourceArgs, ...languageArgs, "--lyrics", lyricsPath, "--out", outPath],
+    {
+      cwd: process.cwd(),
+      stdio: ["ignore", "pipe", "pipe"],
+    }
+  );
   child.stdout.on("data", (d) => pushLog(String(d)));
   child.stderr.on("data", (d) => pushLog(String(d)));
 

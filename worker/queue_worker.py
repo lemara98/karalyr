@@ -189,9 +189,12 @@ def run_job(job, audio_path):
         threading.Thread(target=heartbeat_loop, args=(job_id, stop), daemon=True).start()
         try:
             try:
+                argv = [PYTHON_BIN, ALIGN_SCRIPT, "--audio", str(audio_path),
+                        "--lyrics", str(lyrics_path), "--out", str(out_path)]
+                if job.get("language"):
+                    argv += ["--language", str(job["language"])]
                 proc = subprocess.Popen(
-                    [PYTHON_BIN, ALIGN_SCRIPT, "--audio", str(audio_path),
-                     "--lyrics", str(lyrics_path), "--out", str(out_path)],
+                    argv,
                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                     start_new_session=True,  # own group so kill_child reaps demucs too
                 )

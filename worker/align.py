@@ -49,9 +49,38 @@ def load_lyric_lines(path: Path) -> list[str]:
 
 SPECIAL_ROMAN = {"đ": "dj", "Đ": "dj", "ß": "ss", "æ": "ae", "ø": "o", "þ": "th", "ð": "d", "ł": "l"}
 
+# Languages the aligner accepts via --language (ISO 639-1, what users and the
+# DB see) mapped to the ISO 639-3 codes ctc_forced_aligner's tables use.
+# Latin-script languages are listed so --language validates, but any language
+# benefits from the unidecode path; the default (no --language) keeps the
+# original Balkan-tuned behavior byte-for-byte.
+LANGUAGES = {
+    "hi": "hin", "ta": "tam", "te": "tel", "pa": "pan", "bn": "ben", "mr": "mar",
+    "vi": "vie", "id": "ind", "tl": "tgl", "fil": "tgl", "zh": "cmn",
+    "th": "tha", "km": "khm", "lo": "lao",
+}
+# No word boundaries in these scripts and no tokenizer wired up yet — refuse
+# rather than emit one giant "word" per line. (message text is matched by
+# queue_worker.PERMANENT_MARKERS)
+UNSUPPORTED_WORD_LEVEL = {"th", "km", "lo"}
 
-def romanize_char(ch: str) -> str:
+HAN_RE = re.compile(r"[㐀-䶿一-鿿豈-﫿]")
+
+
+def romanize_char(ch: str, language: str | None = None) -> str:
     """One original character -> its a-z transliteration ("" if none)."""
+    if language is not None:
+        # unidecode is a per-codepoint table, so per-char calls concatenate to
+        # exactly the whole-word result — split_word_syllables depends on that
+        # to map aligned char spans back onto original characters. (This is
+        # why text_normalize is NOT in this path: it works on whole strings.)
+        from unidecode import unidecode  # lazy: default path stays dep-free
+
+        out = []
+        for d in unidecode(ch).lower():
+            if "a" <= d <= "z" or d == "'":
+                out.append(d)
+        return "".join(out)
     if ch in SPECIAL_ROMAN:
         return SPECIAL_ROMAN[ch]
     out = []
@@ -64,14 +93,32 @@ def romanize_char(ch: str) -> str:
     return "".join(out)
 
 
-def romanize_word(word: str) -> str:
+def romanize_word(word: str, language: str | None = None) -> str:
     """Reduce a word to the a-z alphabet the MMS_FA dictionary understands.
 
-    NFD-decompose to strip diacritics (č->c, ž->z, ...), map a few special
-    letters explicitly, drop everything else. Returns "" for words with no
-    alphabetic content (pure punctuation) — those get no timestamps.
+    Default path: NFD-decompose to strip diacritics (č->c, ž->z, ...), map a
+    few special letters explicitly (Balkan-tuned: đ->dj), drop everything
+    else. With a language: unidecode transliterates any script (तुम->tum,
+    đường->duong, 中->zhong). Returns "" for words with no alphabetic content
+    (pure punctuation) — those get no timestamps.
     """
-    return "".join(romanize_char(ch) for ch in word)
+    return "".join(romanize_char(ch, language) for ch in word)
+
+
+def split_line_words(text: str, language: str | None = None) -> list[str]:
+    """A line's words, in singing order. Whitespace-separated everywhere
+    except Chinese, where unspaced Han runs sing one character at a time —
+    each Han char becomes its own word (Latin runs inside stay together)."""
+    words = text.split()
+    if language != "zh":
+        return words
+    out: list[str] = []
+    for w in words:
+        if HAN_RE.search(w):
+            out.extend(re.findall(r"[㐀-䶿一-鿿豈-﫿]|[^㐀-䶿一-鿿豈-﫿]+", w))
+        else:
+            out.append(w)
+    return out
 
 
 VOWELS = frozenset("aeiou")
@@ -103,7 +150,7 @@ def syllable_boundaries(roman: str):
     return bounds
 
 
-def split_word_syllables(original: str, chars_ms):
+def split_word_syllables(original: str, chars_ms, language: str | None = None):
     """Original word + per-roman-char (start_ms, end_ms) -> syllable dicts.
 
     Boundaries are found in romanized space and snapped up to original
@@ -112,7 +159,7 @@ def split_word_syllables(original: str, chars_ms):
     line up with the aligned character count (defensive: better word-level
     than wrong).
     """
-    frags = [romanize_char(ch) for ch in original]
+    frags = [romanize_char(ch, language) for ch in original]
     roman = "".join(frags)
     if len(roman) == 0 or len(roman) != len(chars_ms):
         return None
@@ -301,6 +348,7 @@ def align_words(
     workdir: Path,
     legacy_stamps: bool = False,
     allow_partial: bool = False,
+    language: str | None = None,
 ):
     """Run forced alignment; returns per-line lists of (original_word, stamp)."""
     # One romanized word per surviving original word, so the returned stamps
@@ -314,10 +362,10 @@ def align_words(
     lettered_total = 0
     dropped_lettered: list[str] = []
     for text in lines:
-        raw = text.split()
-        originals = [w for w in raw if romanize_word(w)]
+        raw = split_line_words(text, language)
+        originals = [w for w in raw if romanize_word(w, language)]
         line_lettered = [w for w in raw if any(ch.isalpha() for ch in w)]
-        line_dropped = [w for w in line_lettered if not romanize_word(w)]
+        line_dropped = [w for w in line_lettered if not romanize_word(w, language)]
         lettered_total += len(line_lettered)
         dropped_lettered.extend(line_dropped)
         if line_lettered and not originals and not allow_partial:
@@ -327,7 +375,7 @@ def align_words(
                 "this script yet; pass --allow-partial to skip such lines"
             )
         per_line_words.append(originals)
-        transcript_lines.append(" ".join(romanize_word(w) for w in originals))
+        transcript_lines.append(" ".join(romanize_word(w, language) for w in originals))
 
     if dropped_lettered and lettered_total:
         lost = len(dropped_lettered) / lettered_total
@@ -367,7 +415,9 @@ def align_words(
     return folded
 
 
-def to_payload(lines: list[str], folded, syllables: bool = True) -> dict:
+def to_payload(
+    lines: list[str], folded, syllables: bool = True, language: str | None = None
+) -> dict:
     payload_lines = []
     for text, pairs in zip(lines, folded):
         if not pairs:
@@ -380,7 +430,7 @@ def to_payload(lines: list[str], folded, syllables: bool = True) -> dict:
                 "end_ms": int(round(float(stamp["end"]) * 1000)),
             }
             if syllables and stamp.get("chars"):
-                syls = split_word_syllables(original, stamp["chars"])
+                syls = split_word_syllables(original, stamp["chars"], language)
                 if syls:
                     word["syllables"] = syls
             words.append(word)
@@ -431,7 +481,7 @@ def to_payload(lines: list[str], folded, syllables: bool = True) -> dict:
         "format_version": 1,
         "lines": payload_lines,
         "meta": {
-            "language": None,
+            "language": language,
             # Derived, not asserted: an alignment that produced no timed words
             # must not masquerade as word-synced downstream.
             "has_word_timing": any(l["words"] for l in payload_lines),
@@ -468,8 +518,22 @@ def main():
         action="store_true",
         help="proceed even when some words contain unsupported characters and drop",
     )
+    ap.add_argument(
+        "--language",
+        help="ISO 639-1 code of the lyrics language (hi, vi, id, zh, ...); "
+        "enables script-aware romanization — omit for Latin/Balkan lyrics",
+    )
     args = ap.parse_args()
 
+    language = args.language.lower().strip() if args.language else None
+    if language is not None and language not in LANGUAGES:
+        known = ", ".join(sorted(LANGUAGES))
+        raise SystemExit(f"[align] unknown --language {language!r} (known: {known})")
+    if language in UNSUPPORTED_WORD_LEVEL:
+        raise SystemExit(
+            f"[align] word-level alignment for language {language!r} is not yet "
+            "supported (the script has no word boundaries; unsupported characters)"
+        )
     if args.audio and not args.audio.exists():
         raise SystemExit(f"[align] audio not found: {args.audio}")
     lines = load_lyric_lines(args.lyrics)
@@ -492,10 +556,16 @@ def main():
             tmpdir,
             legacy_stamps=args.legacy_stamps,
             allow_partial=args.allow_partial,
+            language=language,
         )
         # temp dir (downloaded audio + separated stems + transcript) is deleted on exit
 
-    payload = to_payload(lines, folded, syllables=not (args.word_level or args.legacy_stamps))
+    payload = to_payload(
+        lines,
+        folded,
+        syllables=not (args.word_level or args.legacy_stamps),
+        language=language,
+    )
     n_words = sum(len(l["words"]) for l in payload["lines"])
     n_syls = sum(len(w.get("syllables", [])) for l in payload["lines"] for w in l["words"])
     if n_syls:

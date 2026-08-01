@@ -32,6 +32,7 @@ export async function POST(req: Request) {
       track_name: job.trackName,
       album_name: job.albumName,
       duration_seconds: job.durationSeconds,
+      language: job.language,
       attempts: job.attempts,
       max_attempts: job.maxAttempts,
       lease_expires_at: job.leaseExpiresAt,

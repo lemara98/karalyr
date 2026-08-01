@@ -89,6 +89,12 @@ describe("enhanced LRC", () => {
     expect(p.lines[0].text).toBe("No words here");
     expect(p.lines[1].words).toHaveLength(1);
   });
+
+  it("carries [la:]/[lang:] into meta.language", () => {
+    expect(parseEnhancedLrc(`[la:hi]\n${ENHANCED}`).meta.language).toBe("hi");
+    expect(parseEnhancedLrc(`[lang:VI]\n${ENHANCED}`).meta.language).toBe("vi");
+    expect(parseEnhancedLrc(ENHANCED).meta.language).toBeNull();
+  });
 });
 
 describe("ultrastar", () => {

@@ -18,6 +18,8 @@ const bodySchema = z.object({
   album_name: z.string().max(500).nullish(),
   duration: z.number().positive().nullish(),
   lyrics: z.string().min(1).max(60_000),
+  // Optional ISO 639-1 hint; absent → sniffed from the lyrics script.
+  language: z.string().max(10).nullish(),
 });
 
 export async function POST(req: Request) {
@@ -66,6 +68,7 @@ export async function POST(req: Request) {
     rawLyrics: body.lyrics,
     submitterUserId: user.id,
     submitterName: profile?.display_name?.trim() || null,
+    language: body.language,
   });
 
   if (!result.ok) {

@@ -75,6 +75,24 @@ describe("enqueueSyncJob", () => {
     expect(res.job.submitterUserId).toBe("00000000-0000-0000-0000-000000000001");
   });
 
+  it("stores an explicit language hint, or sniffs one from the lyrics", async () => {
+    const hinted = await enqueueSyncJob(db, input({ language: " HI " }), T0);
+    expect(hinted.ok && hinted.job.language).toBe("hi");
+
+    const sniffed = await enqueueSyncJob(
+      db,
+      input({
+        trackName: "Devanagari Song",
+        rawLyrics: "तुम ही हो\nअब तुम ही हो\nजीना यहाँ\nमरना यहाँ",
+      }),
+      T0
+    );
+    expect(sniffed.ok && sniffed.job.language).toBe("hi");
+
+    const latin = await enqueueSyncJob(db, input({ trackName: "Latin Song" }), T0);
+    expect(latin.ok && latin.job.language).toBeNull();
+  });
+
   it("no intake path can reach a worker-claimable status", async () => {
     for (const source of ["extension", "website"] as const) {
       const res = await enqueueSyncJob(db, input({ source, trackName: `T ${source}` }), T0);

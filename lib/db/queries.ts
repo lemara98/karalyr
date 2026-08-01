@@ -177,6 +177,7 @@ export async function searchTracks(db: Db, query: string, limit = 25): Promise<S
     duration_seconds: number;
     best_revision_id: number | null;
     created_at: number;
+    language: string | null;
     best_tier: Tier | null;
     best_has_words: number | null;
   }>(sql`
@@ -198,6 +199,7 @@ export async function searchTracks(db: Db, query: string, limit = 25): Promise<S
     durationSeconds: r.duration_seconds,
     bestRevisionId: r.best_revision_id,
     createdAt: r.created_at,
+    language: r.language,
     bestTier: r.best_tier,
     bestHasWordTiming: r.best_has_words === 1,
   }));
@@ -236,6 +238,7 @@ export async function listMostUsedTracks(db: Db, limit = 8): Promise<MostUsedTra
     duration_seconds: number;
     best_revision_id: number | null;
     created_at: number;
+    language: string | null;
     best_tier: Tier | null;
     best_has_words: number | null;
     singers: number;
@@ -267,6 +270,7 @@ export async function listMostUsedTracks(db: Db, limit = 8): Promise<MostUsedTra
     durationSeconds: r.duration_seconds,
     bestRevisionId: r.best_revision_id,
     createdAt: r.created_at,
+    language: r.language,
     bestTier: r.best_tier,
     bestHasWordTiming: r.best_has_words === 1,
     singers: r.singers,
@@ -298,6 +302,7 @@ export async function listLibraryTracks(db: Db, limit = 60): Promise<LibraryTrac
     duration_seconds: number;
     best_revision_id: number | null;
     created_at: number;
+    language: string | null;
     best_tier: Tier | null;
     best_has_words: number | null;
     singers: number;
@@ -344,6 +349,7 @@ export async function listLibraryTracks(db: Db, limit = 60): Promise<LibraryTrac
     durationSeconds: r.duration_seconds,
     bestRevisionId: r.best_revision_id,
     createdAt: r.created_at,
+    language: r.language,
     bestTier: r.best_tier,
     bestHasWordTiming: r.best_has_words === 1,
     singers: r.singers,
@@ -380,6 +386,7 @@ export async function listSyncedTracksPage(
     duration_seconds: number;
     best_revision_id: number | null;
     created_at: number;
+    language: string | null;
     best_tier: Tier | null;
     best_has_words: number | null;
   }>(sql`
@@ -401,6 +408,7 @@ export async function listSyncedTracksPage(
     durationSeconds: r.duration_seconds,
     bestRevisionId: r.best_revision_id,
     createdAt: r.created_at,
+    language: r.language,
     bestTier: r.best_tier,
     bestHasWordTiming: r.best_has_words === 1,
   }));
@@ -428,6 +436,7 @@ export async function listNewestSyncedTracks(db: Db, limit = 12): Promise<Newest
     duration_seconds: number;
     best_revision_id: number | null;
     created_at: number;
+    language: string | null;
     best_tier: Tier | null;
     best_has_words: number | null;
     synced_at: number;
@@ -448,6 +457,7 @@ export async function listNewestSyncedTracks(db: Db, limit = 12): Promise<Newest
     durationSeconds: r.duration_seconds,
     bestRevisionId: r.best_revision_id,
     createdAt: r.created_at,
+    language: r.language,
     bestTier: r.best_tier,
     bestHasWordTiming: r.best_has_words === 1,
     syncedAt: r.synced_at,

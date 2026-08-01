@@ -21,6 +21,8 @@ const bodySchema = z
     duration: z.number().positive().nullish(),
     synced_lyrics: z.string().max(60_000).nullish(),
     plain_lyrics: z.string().max(60_000).nullish(),
+    // Optional ISO 639-1 hint; absent → sniffed from the lyrics script.
+    language: z.string().max(10).nullish(),
     submitter: z.object({
       user_id: z.string().min(1).max(100),
       display_name: z.string().max(200).nullish(),
@@ -73,6 +75,7 @@ export async function POST(req: Request) {
     rawLyrics: body.synced_lyrics ?? body.plain_lyrics ?? "",
     submitterUserId: body.submitter.user_id,
     submitterName: body.submitter.display_name,
+    language: body.language,
   });
 
   if (!result.ok) {

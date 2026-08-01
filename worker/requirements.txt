@@ -17,3 +17,5 @@ torchaudio
 demucs
 ctc-forced-aligner
 yt-dlp
+# script-aware romanization for --language runs (hi/vi/id/zh/...)
+unidecode

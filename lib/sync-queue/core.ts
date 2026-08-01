@@ -11,6 +11,7 @@ import {
 } from "../db/schema";
 import { stripToPlainLines } from "../formats";
 import { songKey } from "../song-key";
+import { detectLyricsLanguage } from "../lang-detect";
 import { deriveVideoKey, pickPreferredVideoKey } from "../video-key";
 
 /**
@@ -60,6 +61,12 @@ export interface EnqueueInput {
   rawLyrics: string;
   submitterUserId: string;
   submitterName?: string | null;
+  /**
+   * ISO 639-1 lyrics language. Optional hint from the intake; when absent
+   * the lyrics are sniffed (lib/lang-detect.ts). Stored on the job and passed
+   * to the aligner as --language.
+   */
+  language?: string | null;
 }
 
 export type EnqueueResult =
@@ -93,6 +100,13 @@ export async function enqueueSyncJob(
   ) {
     return { ok: false, code: "BadLyrics" };
   }
+
+  // Explicit hint wins; otherwise sniff the script. Normalized to lowercase
+  // 639-1; anything malformed is treated as absent rather than rejected.
+  const languageHint = input.language?.trim().toLowerCase() || null;
+  const language =
+    (languageHint && /^[a-z]{2,3}$/.test(languageHint) ? languageHint : null) ??
+    detectLyricsLanguage(plainLyrics);
 
   const key = songKey(input.artistName, input.trackName);
 
@@ -142,6 +156,7 @@ export async function enqueueSyncJob(
         trackName: input.trackName.trim(),
         albumName: input.albumName?.trim() || null,
         durationSeconds: input.durationSeconds ?? null,
+        language,
         plainLyrics,
         submitterUserId: input.submitterUserId,
         submitterName: input.submitterName?.trim() || null,
