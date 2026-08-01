@@ -17,13 +17,21 @@ import { asciiFold } from "./song-key";
 // pathological title can't produce a multi-kilobyte path.
 const MAX_PART = 60;
 
-/** One URL-safe segment: ASCII-folded, non-alphanumerics collapsed to "-". */
+/**
+ * One URL-safe segment: ASCII-folded where folding is lossless (Latin
+ * diacritics, Cyrillic), native script kept otherwise — `/track/तुम-ही-हो-123`
+ * carries the keywords people actually search, where the old [a-z0-9] rule
+ * collapsed every non-Latin title to the bare id. Browsers render these
+ * natively; the URL is percent-encoded only on the wire. The trailing ASCII
+ * id keeps parseTrackSlug unambiguous (native digits are \p{N}, not \d).
+ */
 export function slugifyPart(s: string | null | undefined): string {
-  return asciiFold(s || "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, MAX_PART)
-    .replace(/-+$/, "");
+  const seg = asciiFold(s || "")
+    .normalize("NFC")
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+  // Slice by code point — a UTF-16 slice could cut a surrogate pair in half.
+  return [...seg].slice(0, MAX_PART).join("").replace(/-+$/, "");
 }
 
 export type SluggableTrack = {
@@ -33,8 +41,8 @@ export type SluggableTrack = {
 };
 
 /**
- * Canonical slug for a track. Falls back to the bare id when both names fold
- * away to nothing (e.g. a title that is entirely punctuation or CJK).
+ * Canonical slug for a track. Falls back to the bare id when both names
+ * reduce to nothing (a title that is entirely punctuation/symbols).
  */
 export function trackSlug(track: SluggableTrack): string {
   const words = [slugifyPart(track.artistName), slugifyPart(track.trackName)]

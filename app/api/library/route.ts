@@ -29,7 +29,16 @@ export async function GET(req: Request) {
     }
   }
 
-  const page = await listSyncedTracksPage(getDb(), { cursor, limit });
+  const rawLang = params.get("lang");
+  let language: string | null = null;
+  if (rawLang !== null && rawLang !== "") {
+    if (!/^[a-z]{2,3}$/.test(rawLang)) {
+      return apiError(400, "BadRequest", "lang must be an ISO 639-1 code");
+    }
+    language = rawLang;
+  }
+
+  const page = await listSyncedTracksPage(getDb(), { cursor, limit, language });
   return json(page);
 }
 

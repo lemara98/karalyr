@@ -42,8 +42,16 @@ describe("trackSlug", () => {
     expect(trackPath(track)).toBe("/track/queen-bohemian-rhapsody-17");
   });
 
-  it("falls back to the bare id when both names fold away", () => {
-    expect(trackSlug({ id: 9, artistName: "米津玄師", trackName: "" })).toBe("9");
+  it("keeps native scripts in the slug (search keywords, not bare ids)", () => {
+    expect(trackSlug({ id: 9, artistName: "米津玄師", trackName: "" })).toBe("米津玄師-9");
+    expect(trackSlug({ id: 12, artistName: "अरिजीत सिंह", trackName: "तुम ही हो" })).toBe(
+      "अरिजीत-सिंह-तुम-ही-हो-12"
+    );
+    expect(parseTrackSlug("अरिजीत-सिंह-तुम-ही-हो-12")).toBe(12);
+  });
+
+  it("falls back to the bare id only for symbol-only names", () => {
+    expect(trackSlug({ id: 9, artistName: "!!!", trackName: "" })).toBe("9");
   });
 
   it("survives a title that ends in digits", () => {

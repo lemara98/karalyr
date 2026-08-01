@@ -6,6 +6,7 @@ import {
   listLibraryTracks,
   listNewestSyncedTracks,
   listSyncedTracksPage,
+  listTrackLanguages,
   type LibraryTrack,
   type NewestSyncedTrack,
 } from "@/lib/db/queries";
@@ -33,6 +34,28 @@ export const metadata: Metadata = {
 
 /** First linked YouTube video / Spotify track per platform, if any. */
 type TrackLinks = { youtube?: string; spotify?: string };
+
+/** Native-name labels for the library's language filter chips. */
+const LANGUAGE_LABELS: Record<string, string> = {
+  en: "English",
+  sr: "Srpski",
+  hr: "Hrvatski",
+  bs: "Bosanski",
+  hi: "हिन्दी",
+  ta: "தமிழ்",
+  te: "తెలుగు",
+  pa: "ਪੰਜਾਬੀ",
+  bn: "বাংলা",
+  mr: "मराठी",
+  vi: "Tiếng Việt",
+  id: "Bahasa Indonesia",
+  tl: "Tagalog",
+  fil: "Filipino",
+  zh: "中文",
+  th: "ไทย",
+  km: "ខ្មែរ",
+  lo: "ລາວ",
+};
 
 function ScoreTag({ score }: { score: number }) {
   if (score === 0) return null;
@@ -134,8 +157,16 @@ function CarouselCard({ track, hidden }: { track: NewestSyncedTrack; hidden?: bo
   );
 }
 
-export default async function LibraryPage() {
+export default async function LibraryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ lang?: string }>;
+}) {
   const db = getDb();
+  // /library?lang=hi — shareable per-market catalog view. Invalid values
+  // just mean "no filter".
+  const rawLang = (await searchParams).lang;
+  const lang = rawLang && /^[a-z]{2,3}$/.test(rawLang) ? rawLang : null;
   const [
     [trackStats],
     [readyStats],
@@ -145,6 +176,7 @@ export default async function LibraryPage() {
     newest,
     ranked,
     firstPage,
+    languages,
   ] = await Promise.all([
     db.select({ n: count() }).from(tracks),
     db.select({ n: count() }).from(tracks).where(isNotNull(tracks.bestRevisionId)),
@@ -159,7 +191,8 @@ export default async function LibraryPage() {
       .where(inArray(syncJobs.status, [...SYNC_JOB_ACTIVE_STATUSES])),
     listNewestSyncedTracks(db, 12),
     listLibraryTracks(db, 60),
-    listSyncedTracksPage(db),
+    listSyncedTracksPage(db, { language: lang }),
+    listTrackLanguages(db),
   ]);
 
   // The grid: only tracks with real usage or a positive vote balance.
@@ -301,7 +334,7 @@ export default async function LibraryPage() {
       </section>
 
       {/* Every song, a page at a time as you scroll */}
-      {firstPage.items.length > 0 && (
+      {(firstPage.items.length > 0 || lang) && (
         <section className="border-t border-white/5">
           <div className="mx-auto max-w-6xl px-6 py-12">
             <p className="klr-eyebrow !text-[11px]">EVERY SONG</p>
@@ -309,11 +342,39 @@ export default async function LibraryPage() {
               The whole library, newest first — keep scrolling and the next page loads
               itself.
             </p>
-            <LibraryBrowser
-              initialItems={firstPage.items}
-              initialCursor={firstPage.nextCursor}
-              total={readyStats.n}
-            />
+            {languages.length > 1 && (
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                <Link
+                  href="/library"
+                  className={`btn btn-sm ${lang === null ? "btn-primary" : "btn-secondary"}`}
+                >
+                  All
+                </Link>
+                {languages.map((l) => (
+                  <Link
+                    key={l.language}
+                    href={`/library?lang=${l.language}`}
+                    className={`btn btn-sm ${lang === l.language ? "btn-primary" : "btn-secondary"}`}
+                    title={`${l.n} song${l.n === 1 ? "" : "s"}`}
+                  >
+                    {LANGUAGE_LABELS[l.language] ?? l.language}
+                  </Link>
+                ))}
+              </div>
+            )}
+            {firstPage.items.length > 0 ? (
+              <LibraryBrowser
+                key={lang ?? "all"}
+                initialItems={firstPage.items}
+                initialCursor={firstPage.nextCursor}
+                total={readyStats.n}
+                lang={lang}
+              />
+            ) : (
+              <div className="klr-card p-8 text-center text-sm text-[color:var(--color-text-dim)]">
+                No songs in this language yet — request one on the queue and be the first.
+              </div>
+            )}
           </div>
         </section>
       )}

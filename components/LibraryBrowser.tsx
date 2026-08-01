@@ -61,10 +61,13 @@ export function LibraryBrowser({
   initialItems,
   initialCursor,
   total,
+  lang,
 }: {
   initialItems: LibraryPageTrack[];
   initialCursor: number | null;
   total: number;
+  /** ISO 639-1 filter the server page was rendered with; threaded to /api/library. */
+  lang?: string | null;
 }) {
   const [items, setItems] = useState(initialItems);
   const [cursor, setCursor] = useState(initialCursor);
@@ -83,7 +86,9 @@ export function LibraryBrowser({
     setLoading(true);
     setError(false);
     try {
-      const res = await fetch(`/api/library?cursor=${at}`);
+      const res = await fetch(
+        `/api/library?cursor=${at}${lang ? `&lang=${encodeURIComponent(lang)}` : ""}`
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const page: { items: LibraryPageTrack[]; nextCursor: number | null } = await res.json();
       // Guard against a double-fire appending the same page twice.
@@ -99,7 +104,7 @@ export function LibraryBrowser({
       state.current.loading = false;
       setLoading(false);
     }
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     const node = sentinel.current;

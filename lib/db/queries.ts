@@ -169,7 +169,7 @@ export async function searchTracks(db: Db, query: string, limit = 25): Promise<S
     .join(" ");
   if (terms === "") return [];
 
-  const rows = await db.all<{
+  let rows = await db.all<{
     id: number;
     artist_name: string;
     track_name: string;
@@ -190,6 +190,22 @@ export async function searchTracks(db: Db, query: string, limit = 25): Promise<S
     ORDER BY bm25(tracks_fts)
     LIMIT ${limit}
   `);
+
+  if (rows.length === 0 && /[^\x00-\x7f]/.test(query)) {
+    // FTS5's unicode61 tokenizer treats an unspaced Thai/Chinese query as one
+    // blob, so prefix matching fails on partial input. LIKE is script-agnostic
+    // — an acceptable full-scan fallback at this catalog's size.
+    const like = `%${query.trim()}%`;
+    rows = await db.all(sql`
+      SELECT t.*, r.tier AS best_tier,
+        json_extract(r.payload, '$.meta.has_word_timing') AS best_has_words
+      FROM tracks t
+      LEFT JOIN revisions r ON r.id = t.best_revision_id
+      WHERE t.artist_name LIKE ${like} OR t.track_name LIKE ${like} OR t.album_name LIKE ${like}
+      ORDER BY t.created_at DESC
+      LIMIT ${limit}
+    `);
+  }
 
   return rows.map((r) => ({
     id: r.id,
@@ -373,10 +389,11 @@ export const LIBRARY_PAGE_SIZE = 48;
  */
 export async function listSyncedTracksPage(
   db: Db,
-  opts: { cursor?: number | null; limit?: number } = {}
+  opts: { cursor?: number | null; limit?: number; language?: string | null } = {}
 ): Promise<{ items: LibraryPageTrack[]; nextCursor: number | null }> {
   const limit = Math.max(1, Math.min(opts.limit ?? LIBRARY_PAGE_SIZE, 100));
   const cursor = opts.cursor ?? null;
+  const language = opts.language ?? null;
   // One extra row tells us whether another page exists without a COUNT.
   const rows = await db.all<{
     id: number;
@@ -394,7 +411,9 @@ export async function listSyncedTracksPage(
       json_extract(r.payload, '$.meta.has_word_timing') AS best_has_words
     FROM tracks t
     JOIN revisions r ON r.id = t.best_revision_id
-    ${cursor == null ? sql`` : sql`WHERE t.id < ${cursor}`}
+    WHERE 1=1
+      ${cursor == null ? sql`` : sql`AND t.id < ${cursor}`}
+      ${language == null ? sql`` : sql`AND t.language = ${language}`}
     ORDER BY t.id DESC
     LIMIT ${limit + 1}
   `);
@@ -417,6 +436,19 @@ export async function listSyncedTracksPage(
     items,
     nextCursor: hasMore && items.length > 0 ? items[items.length - 1].id : null,
   };
+}
+
+/** Languages present in the synced library with counts — the /library filter chips. */
+export async function listTrackLanguages(
+  db: Db
+): Promise<{ language: string; n: number }[]> {
+  return db.all<{ language: string; n: number }>(sql`
+    SELECT t.language AS language, COUNT(*) AS n
+    FROM tracks t
+    WHERE t.best_revision_id IS NOT NULL AND t.language IS NOT NULL
+    GROUP BY t.language
+    ORDER BY n DESC, t.language
+  `);
 }
 
 export interface NewestSyncedTrack extends Track {
