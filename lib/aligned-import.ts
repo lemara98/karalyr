@@ -16,7 +16,7 @@ export interface AlignedImportInput {
   submitterFingerprint: string;
   /**
    * Accept a deliberate line-level payload (has_word_timing false, timed
-   * lines, no words) — the aligner's --line-level mode for scripts with no
+   * lines, no words) - the aligner's --line-level mode for scripts with no
    * word tokenizer (km/lo). Without this flag such payloads are rejected as
    * failed word alignments.
    */
@@ -34,7 +34,7 @@ export interface AlignedImportResult {
  * Import an aligner-produced payload as an auto_aligned revision: resolve or
  * create the track, remember which video it came from, insert the revision
  * (Rule C + best-revision recompute happen inside insertRevision). Shared by
- * the local Studio align flow and the sync-queue worker's complete route —
+ * the local Studio align flow and the sync-queue worker's complete route -
  * one import path for both.
  */
 export async function importAlignedPayload(
@@ -43,7 +43,7 @@ export async function importAlignedPayload(
 ): Promise<AlignedImportResult> {
   // Karalyr stores word/syllable-synced lyrics only; an aligner run that
   // produced no word timing has failed, whatever its exit code said. The
-  // flag alone is not trusted — older aligners asserted it even for gutted
+  // flag alone is not trusted - older aligners asserted it even for gutted
   // output (non-Latin words silently dropped), so check the content too.
   // Exception: an EXPLICIT line-level run (aligner --line-level for km/lo)
   // is honest line-synced output, accepted only when the caller opts in.
@@ -56,7 +56,7 @@ export async function importAlignedPayload(
     !deliberateLineLevel &&
     (!input.payload.meta.has_word_timing || input.payload.lines.length === 0 || !hasWords)
   ) {
-    throw new FormatError("Aligned payload has no word timing — refusing to import");
+    throw new FormatError("Aligned payload has no word timing - refusing to import");
   }
   const track = await findOrCreateTrack(db, {
     artistName: input.artist,

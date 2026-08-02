@@ -4,13 +4,13 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 /**
- * Admin identity. Karalyr's moderation surfaces are gated by a real account —
- * the shared Supabase login it already uses for comments — not by a shared
+ * Admin identity. Karalyr's moderation surfaces are gated by a real account -
+ * the shared Supabase login it already uses for comments - not by a shared
  * secret, so every action has a person behind it and access is revocable per
  * user.
  *
  * Two ways to be an admin, matching the karafilt.com website:
- *   1. ADMIN_EMAILS — comma-separated allowlist, zero-friction bootstrap.
+ *   1. ADMIN_EMAILS - comma-separated allowlist, zero-friction bootstrap.
  *   2. public.app_admins in the shared Supabase project (karafilt's
  *      0002_admin.sql). That table has a select-own RLS policy and *no*
  *      write policy, so a user can read their own admin status but can never
@@ -44,7 +44,7 @@ function adminEmailAllowlist(): string[] {
 
 /**
  * True if `user` is an admin: in the ADMIN_EMAILS allowlist, or present in
- * public.app_admins. `supabase` must be the request-scoped client — the
+ * public.app_admins. `supabase` must be the request-scoped client - the
  * own-row SELECT policy is what lets the user read their own status.
  */
 export async function isAdminUser(user: User, supabase: SupabaseClient): Promise<boolean> {
@@ -73,7 +73,7 @@ export interface AdminStatus {
  * Resolve admin status for the current request from cookies. Safe in Server
  * Components and Route Handlers alike.
  *
- * Uses auth.getUser(), which verifies the JWT with the auth server — never
+ * Uses auth.getUser(), which verifies the JWT with the auth server - never
  * getSession(), which would trust whatever cookie the browser presented.
  */
 export async function adminStatus(): Promise<AdminStatus> {
@@ -97,7 +97,7 @@ export async function adminStatus(): Promise<AdminStatus> {
 
 /**
  * Guard for admin route handlers. Every admin endpoint is reachable directly
- * over HTTP, so each one calls this for itself — gating the page is never the
+ * over HTTP, so each one calls this for itself - gating the page is never the
  * only check.
  */
 export async function isAdminRequest(): Promise<boolean> {

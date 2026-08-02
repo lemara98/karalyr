@@ -39,10 +39,10 @@ function syncSubmitError(status: number, body: { name?: string; message?: string
     case "BadLyrics":
       return "Need at least 4 lyric lines.";
     case "QueueFull":
-      return "The queue is full right now — please try again later.";
+      return "The queue is full right now - please try again later.";
   }
-  if (status === 429) return "Daily limit reached — try again tomorrow.";
-  if (status === 503) return "The queue is full right now — please try again later.";
+  if (status === 429) return "Daily limit reached - try again tomorrow.";
+  if (status === 503) return "The queue is full right now - please try again later.";
   return body.message ?? `Request failed (${status})`;
 }
 
@@ -118,7 +118,7 @@ function RequestSync() {
       body: JSON.stringify(body),
     }).catch(() => null);
     if (!res) {
-      setState({ phase: "error", detail: "Network error — please try again." });
+      setState({ phase: "error", detail: "Network error - please try again." });
       return;
     }
     if (res.status === 401) {
@@ -136,7 +136,7 @@ function RequestSync() {
       setState({
         phase: "done",
         detail:
-          "Submitted — an admin will approve it, then the aligner processes it (usually within a day).",
+          "Submitted - an admin will approve it, then the aligner processes it (usually within a day).",
       });
       loadMine();
     } else {
@@ -223,7 +223,7 @@ function RequestSync() {
       </div>
 
       <label className="block text-sm text-[color:var(--color-text-muted)]">
-        Plain lyrics * — one sung line per row; LRC-timestamped text is fine,
+        Plain lyrics * - one sung line per row; LRC-timestamped text is fine,
         timings get stripped
         {lineCount > 0 && (
           <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">
@@ -273,7 +273,7 @@ function RequestSync() {
               className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm"
             >
               <span className="min-w-0 flex-1 truncate">
-                {j.artist_name} — {j.track_name}
+                {j.artist_name} - {j.track_name}
               </span>
               <SyncStatusChip status={j.status} />
               {j.status === "done" && j.result_track_id && (
@@ -356,7 +356,7 @@ export function Contribute({
     }
   }, [mode, raw, format]);
 
-  // Word timing is required to publish — a line-level paste would only be
+  // Word timing is required to publish - a line-level paste would only be
   // rejected by the server, so keep the button disabled instead.
   const ready =
     artist.trim() !== "" &&
@@ -515,7 +515,7 @@ export function Contribute({
                       ? `Parse error: ${preview.error}`
                       : preview.wordTiming
                         ? `Detected ${preview.fmt}: ${preview.lines} lines, word-level timing`
-                        : `Detected ${preview.fmt}: ${preview.lines} lines — line-level only. Publishing needs word timing; use "Request AI sync" instead.`}
+                        : `Detected ${preview.fmt}: ${preview.lines} lines - line-level only. Publishing needs word timing; use "Request AI sync" instead.`}
                   </span>
                 )}
               </div>

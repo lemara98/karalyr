@@ -15,7 +15,7 @@ describe("gapSegments", () => {
     ]);
   });
 
-  it("uses a strict threshold — exactly GAP_MIN_MS does not trigger", () => {
+  it("uses a strict threshold - exactly GAP_MIN_MS does not trigger", () => {
     expect(gapSegments([line(GAP_MIN_MS, 8000)])).toEqual([]);
     expect(gapSegments([line(GAP_MIN_MS + 1, 8000)])).toEqual([
       { index: 0, start: 0, end: GAP_MIN_MS + 1 },

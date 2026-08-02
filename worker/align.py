@@ -18,7 +18,7 @@ Usage:
       --audio song.mp3 --lyrics lyrics.txt --out payload.json
 
 The lyrics file is plain text, one sung line per row (blank lines ignored).
-LRC input also works — timestamps are stripped, only the text is used.
+LRC input also works - timestamps are stripped, only the text is used.
 First run downloads the MMS alignment model (~1.2 GB, cached by torchaudio).
 
 Everything runs locally; the audio never leaves this machine and the
@@ -59,7 +59,7 @@ LANGUAGES = {
     "vi": "vie", "id": "ind", "tl": "tgl", "fil": "tgl", "zh": "cmn",
     "th": "tha", "km": "khm", "lo": "lao",
 }
-# No word boundaries in these scripts and no tokenizer wired up yet — refuse
+# No word boundaries in these scripts and no tokenizer wired up yet - refuse
 # word-level rather than emit one giant "word" per line; --line-level is the
 # honest path for these. Thai is NOT listed: pythainlp's newmm dictionary
 # tokenizer supplies its word boundaries. (message text is matched by
@@ -73,7 +73,7 @@ def romanize_char(ch: str, language: str | None = None) -> str:
     """One original character -> its a-z transliteration ("" if none)."""
     if language is not None:
         # unidecode is a per-codepoint table, so per-char calls concatenate to
-        # exactly the whole-word result — split_word_syllables depends on that
+        # exactly the whole-word result - split_word_syllables depends on that
         # to map aligned char spans back onto original characters. (This is
         # why text_normalize is NOT in this path: it works on whole strings.)
         from unidecode import unidecode  # lazy: default path stays dep-free
@@ -102,7 +102,7 @@ def romanize_word(word: str, language: str | None = None) -> str:
     few special letters explicitly (Balkan-tuned: đ->dj), drop everything
     else. With a language: unidecode transliterates any script (तुम->tum,
     đường->duong, 中->zhong). Returns "" for words with no alphabetic content
-    (pure punctuation) — those get no timestamps.
+    (pure punctuation) - those get no timestamps.
     """
     return "".join(romanize_char(ch, language) for ch in word)
 
@@ -146,7 +146,7 @@ def syllable_boundaries(roman: str):
 
     Vowel groups are the nuclei; an intervocalic consonant cluster breaks
     before its last consonant (vo-da, i-me-nom, sest-ra). Returns None for
-    words with fewer than two nuclei — those stay word-level.
+    words with fewer than two nuclei - those stay word-level.
     """
     nuclei = []
     i = 0
@@ -243,7 +243,7 @@ def parse_artist_title(raw_title: str):
     title stores a track identity that exact /api/get lookups (the browser
     extension, LRCLIB clients) can never match. Split on the dash, drop
     trailing descriptor segments ("(Audio 2005)", "Live in ..."), strip noise
-    parentheses. Returns (None, None) when there is no dash to split on —
+    parentheses. Returns (None, None) when there is no dash to split on -
     the caller keeps its channel/title fallback for that case.
     """
     segs = [s.strip() for s in re.split(r"\s+[-–—]\s+", raw_title) if s.strip()]
@@ -263,7 +263,7 @@ def parse_artist_title(raw_title: str):
 def download_youtube(url: str, workdir: Path) -> tuple[Path, dict]:
     """PERSONAL-USE convenience: fetch a video's audio into the run's temp dir.
 
-    Downloading from YouTube violates YouTube's Terms of Service — this flag
+    Downloading from YouTube violates YouTube's Terms of Service - this flag
     exists for local, personal testing on your own machine only and must not
     be wired into any hosted flow. The file lives in the temporary work dir
     and is deleted (with the stems) when the run finishes.
@@ -297,7 +297,7 @@ def download_youtube(url: str, workdir: Path) -> tuple[Path, dict]:
         "duration": info.get("duration") or 0,
     }
     print(
-        f"[align] got: {meta['artist']} — {meta['title']} ({meta['duration']}s, {hits[0].suffix[1:]})"
+        f"[align] got: {meta['artist']} - {meta['title']} ({meta['duration']}s, {hits[0].suffix[1:]})"
     )
     return hits[0], meta
 
@@ -311,13 +311,13 @@ def run_demucs(audio: Path, workdir: Path) -> Path:
     )
     hits = list(workdir.glob(f"*/{audio.stem}/vocals.wav"))
     if not hits:
-        raise SystemExit("[align] demucs produced no vocals.wav — aborting")
+        raise SystemExit("[align] demucs produced no vocals.wav - aborting")
     return hits[0]
 
 
 def get_word_stamps_with_chars(vocals: Path, transcript_path: Path):
     """ctc_forced_aligner.get_word_stamps, reimplemented to also keep each
-    word's per-character times — the package computes the char-level token
+    word's per-character times - the package computes the char-level token
     spans internally and collapses them at the end. Same single model pass,
     same frame→time math as its _postprocess_results.
 
@@ -380,7 +380,7 @@ def align_words(
     lettered_total = 0
     dropped_lettered: list[str] = []
     for text in lines:
-        # Line-level mode: the whole line is one alignment unit — used for
+        # Line-level mode: the whole line is one alignment unit - used for
         # scripts with no word tokenizer (km/lo). Line times are recovered;
         # no word timing is claimed.
         raw = [text] if line_level else split_line_words(text, language)
@@ -392,7 +392,7 @@ def align_words(
         if line_lettered and not originals and not allow_partial:
             raise SystemExit(
                 f"[align] every word of a line contains unsupported characters "
-                f"(e.g. {' '.join(line_lettered[:5])!r}) — the aligner cannot process "
+                f"(e.g. {' '.join(line_lettered[:5])!r}) - the aligner cannot process "
                 "this script yet; pass --allow-partial to skip such lines"
             )
         per_line_words.append(originals)
@@ -404,7 +404,7 @@ def align_words(
             sample = ", ".join(repr(w) for w in dropped_lettered[:5])
             raise SystemExit(
                 f"[align] {len(dropped_lettered)}/{lettered_total} words contain "
-                f"unsupported characters and would be silently dropped ({sample}) — "
+                f"unsupported characters and would be silently dropped ({sample}) - "
                 "refusing to produce a gutted alignment; pass --allow-partial to override"
             )
         if dropped_lettered:
@@ -424,7 +424,7 @@ def align_words(
     expected = sum(len(w) for w in per_line_words)
     if len(stamps) != expected:
         raise SystemExit(
-            f"[align] aligner returned {len(stamps)} words, transcript has {expected} — "
+            f"[align] aligner returned {len(stamps)} words, transcript has {expected} - "
             "this usually means unsupported characters; check the lyrics file"
         )
 
@@ -528,7 +528,7 @@ def main():
     src.add_argument("--audio", type=Path, help="local audio file you own")
     src.add_argument(
         "--youtube",
-        help="YouTube URL (PERSONAL USE ONLY — downloading violates YouTube ToS; local testing flag)",
+        help="YouTube URL (PERSONAL USE ONLY - downloading violates YouTube ToS; local testing flag)",
     )
     ap.add_argument("--lyrics", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
@@ -551,12 +551,12 @@ def main():
     ap.add_argument(
         "--language",
         help="ISO 639-1 code of the lyrics language (hi, vi, id, zh, ...); "
-        "enables script-aware romanization — omit for Latin/Balkan lyrics",
+        "enables script-aware romanization - omit for Latin/Balkan lyrics",
     )
     ap.add_argument(
         "--line-level",
         action="store_true",
-        help="align whole lines only (no word timing) — the honest mode for "
+        help="align whole lines only (no word timing) - the honest mode for "
         "scripts with no word tokenizer (km/lo)",
     )
     args = ap.parse_args()
@@ -569,7 +569,7 @@ def main():
         raise SystemExit(
             f"[align] word-level alignment for language {language!r} is not yet "
             "supported (the script has no word boundaries; unsupported characters) "
-            "— run with --line-level for line-synced output"
+            "- run with --line-level for line-synced output"
         )
     if args.audio and not args.audio.exists():
         raise SystemExit(f"[align] audio not found: {args.audio}")
@@ -618,7 +618,7 @@ def main():
         args.out.with_suffix(".meta.json").write_text(
             json.dumps(meta, ensure_ascii=False), encoding="utf-8"
         )
-    print(f"[align] wrote {args.out} — {len(payload['lines'])} lines, {n_words} timed words")
+    print(f"[align] wrote {args.out} - {len(payload['lines'])} lines, {n_words} timed words")
     print("[align] import it with:")
     print(
         f'  npx tsx scripts/import-aligned.ts --artist "{meta["artist"]}" --track "{meta["title"]}" '

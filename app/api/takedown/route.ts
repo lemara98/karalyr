@@ -11,7 +11,7 @@ import { recordNotice, TAKEDOWN_EMAIL } from "@/lib/takedown";
  *
  * Deliberately unauthenticated and account-free: a rightsholder must be able
  * to complain in one step, without signing up for the service they are
- * complaining about. Rate-limited only to keep it from being a spam vector —
+ * complaining about. Rate-limited only to keep it from being a spam vector -
  * the limit is loose, because a notice being dropped is far worse than a
  * duplicate being stored.
  *
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     return apiError(
       429,
       "TooManyRequests",
-      `Too many notices from this address in the last hour. Email ${TAKEDOWN_EMAIL} instead — that route is never rate limited.`
+      `Too many notices from this address in the last hour. Email ${TAKEDOWN_EMAIL} instead - that route is never rate limited.`
     );
   }
 

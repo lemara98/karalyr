@@ -11,7 +11,7 @@ import {
 } from "@/lib/takedown";
 
 /**
- * Acting on a rights complaint. Every action names the admin who took it —
+ * Acting on a rights complaint. Every action names the admin who took it -
  * a removal is a legal act, so the audit trail matters as much as the effect.
  *
  * `action: "remove"` is irreversible: the lyric payloads are purged, not

@@ -16,7 +16,7 @@ import { deriveVideoKey, pickPreferredVideoKey } from "../video-key";
 
 /**
  * State machine for the word-sync demand queue (see the syncJobs table).
- * Every transition is a guarded UPDATE — the WHERE re-checks the expected
+ * Every transition is a guarded UPDATE - the WHERE re-checks the expected
  * status (and owner, for worker calls) so a stale actor gets `null` back
  * instead of clobbering someone else's transition. Nothing here holds a
  * transaction open: single-statement atomicity is all SQLite/Turso need.
@@ -57,7 +57,7 @@ export interface EnqueueInput {
   trackName: string;
   albumName?: string | null;
   durationSeconds?: number | null;
-  /** Plain text or (enhanced) LRC — timing tags are stripped here. */
+  /** Plain text or (enhanced) LRC - timing tags are stripped here. */
   rawLyrics: string;
   submitterUserId: string;
   submitterName?: string | null;
@@ -87,7 +87,7 @@ export async function enqueueSyncJob(
   input: EnqueueInput,
   now = Date.now()
 ): Promise<EnqueueResult> {
-  // A link is optional, but one that was supplied has to parse — quietly
+  // A link is optional, but one that was supplied has to parse - quietly
   // dropping a typo'd URL would throw away the only trace back to the song.
   const videoUrl = input.videoUrl?.trim() || null;
   const videoKey = videoUrl ? deriveVideoKey(videoUrl) : null;
@@ -111,7 +111,7 @@ export async function enqueueSyncJob(
   const key = songKey(input.artistName, input.trackName);
 
   // Layer 1: the song already has word-timed lyrics. Tier is deliberately not
-  // the test — a community *line*-synced revision can be the best one and the
+  // the test - a community *line*-synced revision can be the best one and the
   // track still wants word sync. pending_review counts too: an import under a
   // verified best revision lands there (Rule C), and without this the same
   // song would be re-requested and re-aligned while it waits for review.
@@ -120,7 +120,7 @@ export async function enqueueSyncJob(
     return { ok: false, code: "AlreadySynced", trackId: syncedTrackId };
   }
 
-  // Layer 2: someone already wants this song — record a vote on their request
+  // Layer 2: someone already wants this song - record a vote on their request
   // rather than opening a second one.
   const live = await findLiveRequest(db, key);
   if (live) return { ok: true, job: await addVote(db, live, input, videoKey, videoUrl, now), voted: true };
@@ -168,7 +168,7 @@ export async function enqueueSyncJob(
     await recordVote(db, job.id, input.submitterUserId, videoKey, videoUrl, now);
     return { ok: true, job, voted: false };
   } catch (err) {
-    // Lost the read-then-insert race — the partial unique index caught it, so
+    // Lost the read-then-insert race - the partial unique index caught it, so
     // the winner's request is the one to vote on.
     if (isUniqueViolation(err)) {
       const winner = await findLiveRequest(db, key);
@@ -192,7 +192,7 @@ function findLiveRequest(db: Db, key: string): Promise<SyncJob | undefined> {
 /**
  * Track id if this song already has word-timed lyrics, else null. Checked by
  * video key first (exact and indexed), then by song identity so a want with no
- * link — or with a link nobody has mapped yet — is still recognised.
+ * link - or with a link nobody has mapped yet - is still recognised.
  */
 async function findSyncedTrack(
   db: Db,
@@ -213,7 +213,7 @@ async function findSyncedTrack(
 
   // Song identity has to be compared in JS (songKey folds diacritics and
   // strips upload noise, which SQL can't reproduce), so this scans the tracks
-  // that already have word timing — a small set relative to the library. If
+  // that already have word timing - a small set relative to the library. If
   // that set ever gets large, denormalise song_key onto tracks and index it.
   const candidates = await db.all<{ id: number; artist_name: string; track_name: string }>(sql`
     SELECT DISTINCT t.id, t.artist_name, t.track_name
@@ -277,7 +277,7 @@ async function recordVote(
 /**
  * Close every open request for a track that just gained word-timed lyrics,
  * whichever path produced them (worker import, local align, or a direct
- * upload). Leaves "processing" alone — a worker owns that row
+ * upload). Leaves "processing" alone - a worker owns that row
  * and reports its own outcome. Returns how many were closed.
  */
 export async function resolveWantedForTrack(
@@ -303,7 +303,7 @@ export async function resolveWantedForTrack(
 /**
  * Atomically claim the oldest eligible queued job. Also sweeps expired
  * leases first: crashed workers' jobs go back to queued (with a delay) or to
- * failed once out of attempts. Safe with any number of concurrent workers —
+ * failed once out of attempts. Safe with any number of concurrent workers -
  * the claim is a single UPDATE whose WHERE re-checks the row is still queued.
  */
 export async function claimNextJob(
@@ -368,7 +368,7 @@ export async function claimNextJob(
   return claimed ?? null;
 }
 
-/** Extend the lease. `null` means the caller no longer owns the job — abort the run. */
+/** Extend the lease. `null` means the caller no longer owns the job - abort the run. */
 export async function heartbeatJob(
   db: Db,
   id: number,
@@ -469,7 +469,7 @@ function ownedProcessing(id: number, workerId: string) {
 export type ModerateAction = "promote" | "approve" | "reject" | "cancel" | "retry";
 
 const MODERATE_FROM: Record<ModerateAction, SyncJobStatus[]> = {
-  // The only way into "queued" — i.e. the only way a request becomes work the
+  // The only way into "queued" - i.e. the only way a request becomes work the
   // pull worker can claim. Deliberately admin-only, so the operator decides
   // per song that they have a lawful way to get the audio.
   promote: ["wanted"],
@@ -480,7 +480,7 @@ const MODERATE_FROM: Record<ModerateAction, SyncJobStatus[]> = {
 };
 
 /** Admin transition. `null` = the job wasn't in an allowed state (or, for
- * retry, another live job for the same video now exists) — report a conflict. */
+ * retry, another live job for the same video now exists) - report a conflict. */
 export async function moderateSyncJob(
   db: Db,
   id: number,
@@ -531,7 +531,7 @@ export async function listSyncJobs(
 }
 
 export interface EditJobPatch {
-  /** Plain text or LRC — timing tags are stripped, same as intake. */
+  /** Plain text or LRC - timing tags are stripped, same as intake. */
   lyrics?: string;
   artistName?: string;
   trackName?: string;
@@ -544,13 +544,13 @@ export type EditJobResult =
   | { ok: false; reason: "bad_lyrics" | "bad_metadata" | "duplicate_song" | "not_editable" };
 
 /**
- * Admin correction of a candidate — the lyrics the aligner will read and/or
+ * Admin correction of a candidate - the lyrics the aligner will read and/or
  * the artist/track/album metadata (LRCLIB names often carry small mistakes).
  * Same normalization and bounds as intake. Guarded update, same as every
  * other transition here: editable only while the job is waiting (a processing
  * job belongs to its worker; closed jobs are history).
  *
- * A rename recomputes song_key — the dedup identity — so a second want for
+ * A rename recomputes song_key - the dedup identity - so a second want for
  * the corrected song still collapses onto this job. If another active job
  * already holds the corrected identity, the unique index refuses the rename
  * ("duplicate_song") instead of silently forking demand.
@@ -584,7 +584,7 @@ export async function editJob(
   }
 
   if (artistName !== undefined || trackName !== undefined) {
-    // song_key derives from both names — fetch the untouched one to recompute.
+    // song_key derives from both names - fetch the untouched one to recompute.
     const [job] = await db
       .select({ artistName: syncJobs.artistName, trackName: syncJobs.trackName })
       .from(syncJobs)

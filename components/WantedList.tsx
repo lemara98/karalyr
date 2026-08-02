@@ -8,7 +8,7 @@ import { QueueVoteButton } from "./QueueVoteButton";
 
 /**
  * Ranked list of songs waiting for word-timed lyrics. Numbered because the
- * rank is the information — this is a demand leaderboard, not a catalogue.
+ * rank is the information - this is a demand leaderboard, not a catalogue.
  * `startRank` keeps the numbering honest across /queue pages.
  *
  * Each row's title opens the candidate page (/queue/[id]) with the full
@@ -26,7 +26,7 @@ export function WantedList({
   if (songs.length === 0) {
     return (
       <p className="text-sm text-[color:var(--color-text-muted)]">
-        Nothing waiting right now — every requested song has word-timed lyrics.
+        Nothing waiting right now - every requested song has word-timed lyrics.
       </p>
     );
   }
@@ -117,7 +117,7 @@ function WantedRow({
             <div className="relative aspect-video w-full max-w-md flex-none overflow-hidden rounded-xl border border-white/10">
               <iframe
                 src={`https://www.youtube-nocookie.com/embed/${video.id}?rel=0`}
-                title={`YouTube — ${song.artistName} – ${song.trackName}`}
+                title={`YouTube - ${song.artistName} – ${song.trackName}`}
                 loading="lazy"
                 allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
@@ -129,7 +129,7 @@ function WantedRow({
             <div className="w-full max-w-md flex-none self-start overflow-hidden rounded-xl border border-white/10">
               <iframe
                 src={`https://open.spotify.com/embed/track/${video.id}`}
-                title={`Spotify — ${song.artistName} – ${song.trackName}`}
+                title={`Spotify - ${song.artistName} – ${song.trackName}`}
                 width="100%"
                 height={152}
                 loading="lazy"

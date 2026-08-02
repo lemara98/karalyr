@@ -24,14 +24,14 @@ turso db tokens create karalyr       # the auth token
 DATABASE_URL=libsql://… DATABASE_AUTH_TOKEN=… npm run db:migrate
 ```
 
-Expect 11 migrations. **Do not run `npm run seed`** — that inserts placeholder
+Expect 11 migrations. **Do not run `npm run seed`** - that inserts placeholder
 sample tracks meant for local development.
 
 ### Migrating on push
 
 `.github/workflows/migrate.yml` runs `npm run db:migrate` against production on
 every push to `main` that touches `drizzle/`, and on demand from the Actions
-tab. It needs two secrets — `DATABASE_URL` and `DATABASE_AUTH_TOKEN` — on a
+tab. It needs two secrets - `DATABASE_URL` and `DATABASE_AUTH_TOKEN` - on a
 GitHub environment named `production`; add a required reviewer there and each
 run waits for your approval before it touches the database.
 
@@ -77,20 +77,20 @@ Set these for **Production** (Project → Settings → Environment Variables):
 
 Three that matter more than the rest:
 
-- **`ENABLE_LOCAL_ALIGN` — leave unset.** It exposes the Studio's local
+- **`ENABLE_LOCAL_ALIGN` - leave unset.** It exposes the Studio's local
   aligner, which spawns a subprocess on the server. On a public host that is
   remote code execution behind a UI. The capture worker is the hosted-safe
   path and produces the same result.
-- **`ADMIN_TOKEN` — leave unset.** `/admin` is gated on a signed-in account
+- **`ADMIN_TOKEN` - leave unset.** `/admin` is gated on a signed-in account
   (`ADMIN_EMAILS`, or `app_admins` in Supabase). The token is a deprecated
   fallback that grants access with no identity attached; it exists only so a
   deploy cannot lock the operator out mid-migration.
-- **`FINGERPRINT_SALT`** — changing it later resets every rate limit and
+- **`FINGERPRINT_SALT`** - changing it later resets every rate limit and
   every per-fingerprint dedupe. Set it once.
 
 ## 4. Deploy and attach the domain
 
-Import the GitHub repo in Vercel. The defaults are correct — it is a stock
+Import the GitHub repo in Vercel. The defaults are correct - it is a stock
 Next.js app with no Vercel-proprietary APIs. Then add `karalyr.com` under
 Project → Domains and point DNS as Vercel instructs.
 
@@ -120,13 +120,13 @@ rejected at `/api/sync-queue/intake` with a 401.
 ## Smoke test
 
 ```bash
-# public read API — expect 200 and a JSON array
+# public read API - expect 200 and a JSON array
 curl -s https://karalyr.com/api/search?q=a | head -c 200
 
-# admin must be closed to anonymous callers — expect 401
+# admin must be closed to anonymous callers - expect 401
 curl -s -o /dev/null -w '%{http_code}\n' https://karalyr.com/api/admin/pending
 
-# worker routes must not be reachable cross-origin — expect no CORS allowance
+# worker routes must not be reachable cross-origin - expect no CORS allowance
 curl -sI -X OPTIONS https://karalyr.com/api/worker/claim | head -1
 ```
 
@@ -137,7 +137,7 @@ In a browser:
 3. `/queue` renders (empty until people request songs)
 4. `/admin` redirects to login, and lets you in once signed in as an
    `ADMIN_EMAILS` address
-5. Sign in — you should land back on karalyr.com, not localhost
+5. Sign in - you should land back on karalyr.com, not localhost
 
 **Confirm the shared store is live**, since this is what makes Vercel safe:
 
@@ -151,7 +151,7 @@ done; echo
 ```
 
 The tail should be `429`s. If it stays `200`/`404` forever, instances are not
-sharing state — check `DATABASE_URL` reached the deployment.
+sharing state - check `DATABASE_URL` reached the deployment.
 
 ## Fulfilling requests in production
 

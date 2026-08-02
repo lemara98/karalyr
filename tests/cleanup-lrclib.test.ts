@@ -67,7 +67,7 @@ describe("cleanupLrclibImports", () => {
     expect(await db.select().from(trackVideos)).toHaveLength(0);
   });
 
-  it("deletes an lrclib-only track without a video outright — no request", async () => {
+  it("deletes an lrclib-only track without a video outright - no request", async () => {
     const db = await makeDb();
     const track = await makeTrack(db);
     await makeLrclibRevision(db, track.id);

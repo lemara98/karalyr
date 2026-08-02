@@ -46,8 +46,8 @@ beforeEach(async () => {
 
 /**
  * A request an admin has promoted, i.e. actual work the pull worker can claim.
- * Intake alone never produces one — "wanted" is the only status a user can
- * reach — so every worker-lifecycle test goes through here.
+ * Intake alone never produces one - "wanted" is the only status a user can
+ * reach - so every worker-lifecycle test goes through here.
  */
 async function queuedJob(overrides: Partial<EnqueueInput> = {}, now = T0) {
   const res = await enqueueSyncJob(db, input(overrides), now);

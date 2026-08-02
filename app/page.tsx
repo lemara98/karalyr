@@ -30,7 +30,7 @@ const FEATURES = [
   },
   {
     title: "Word-level fill",
-    body: "Word timing drives the classic karaoke sweep — the same engine Karafilt plays back.",
+    body: "Word timing drives the classic karaoke sweep - the same engine Karafilt plays back.",
     icon: (
       <svg viewBox="0 0 20 20" aria-hidden="true" className="h-5 w-5">
         <rect x="3" y="4.4" width="14" height="2.8" rx="1.4" fill="var(--klr-b)" />
@@ -62,7 +62,7 @@ const STEPS = [
   {
     n: "01",
     title: "Bring a song",
-    body: "Import a word-synced Enhanced LRC or UltraStar file — or start from plain lyrics and a YouTube link.",
+    body: "Import a word-synced Enhanced LRC or UltraStar file - or start from plain lyrics and a YouTube link.",
   },
   {
     n: "02",
@@ -87,7 +87,7 @@ const KARAFILT_POINTS = [
   },
   {
     title: "Free and open source",
-    body: "MIT, like Karalyr — install it once and every mode is yours.",
+    body: "MIT, like Karalyr - install it once and every mode is yours.",
   },
 ];
 
@@ -135,7 +135,7 @@ export default async function HomePage() {
             </h1>
             <p className="mt-5.5 max-w-md text-[17px] leading-relaxed text-[color:var(--color-text-muted)]">
               Karalyr is the open karaoke lyrics database. Time lyrics to any
-              track — line by line, word by word — and publish them straight to
+              track - line by line, word by word - and publish them straight to
               the library Karafilt plays.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -296,7 +296,7 @@ export default async function HomePage() {
             <StatCard
               label="LYRIC REVISIONS"
               value={revisionStats.n.toLocaleString("en-US")}
-              hint="Immutable — nothing is ever overwritten"
+              hint="Immutable - nothing is ever overwritten"
             />
             <StatCard
               label="CONTRIBUTORS"
@@ -307,7 +307,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* The sibling project — karafilt.com links back to this section's twin */}
+      {/* The sibling project - karafilt.com links back to this section's twin */}
       <section id="karafilt" className="scroll-mt-6 border-t border-white/5">
         <div className="mx-auto max-w-6xl px-6 py-18">
           <div className="klr-card relative overflow-hidden p-8 sm:p-10">
@@ -342,7 +342,7 @@ export default async function HomePage() {
                 </h2>
                 <p className="max-w-lg text-[15px] leading-relaxed text-[color:var(--color-text-muted)]">
                   Karafilt is the free browser extension from the same family: it strips
-                  the lead vocal out of any tab — YouTube, Spotify Web, SoundCloud — in
+                  the lead vocal out of any tab - YouTube, Spotify Web, SoundCloud - in
                   real time, then asks Karalyr for the lyrics and lights them up word by
                   word while you sing. Every song timed here shows up there.
                 </p>

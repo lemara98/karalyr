@@ -1,7 +1,7 @@
 // Offscreen document: the only place that touches audio.
 //
 // tabCapture hands back a MediaStream of whatever the tab is playing. We do two
-// things with it: record it (Opus in a WebM container — small enough to ship
+// things with it: record it (Opus in a WebM container - small enough to ship
 // over native messaging, and plenty for forced alignment), and route it to the
 // speakers so the operator still hears the song. That second part is not
 // optional: a captured stream is silent by default, and a silent tab is very

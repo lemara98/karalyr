@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   }
 
   // A link is optional, but an unparseable one is rejected before it costs the
-  // submitter any of their daily budget — auto-triggered clients must not pay
+  // submitter any of their daily budget - auto-triggered clients must not pay
   // for a guaranteed rejection.
   if (body.video_url && !deriveVideoKey(body.video_url)) {
     return apiError(400, "UnsupportedSource", "That link isn't a recognised YouTube or Spotify URL");

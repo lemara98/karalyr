@@ -35,7 +35,7 @@ describe("normalizeForMatch", () => {
   });
 
   it("keeps a title that is entirely a noise word", () => {
-    // "Live" is a real band/title — stripping it to "" would merge every such
+    // "Live" is a real band/title - stripping it to "" would merge every such
     // song into one want.
     expect(normalizeForMatch("Live")).toBe("live");
     expect(normalizeForMatch("Video")).toBe("video");
@@ -44,7 +44,7 @@ describe("normalizeForMatch", () => {
   it("returns empty only for genuinely empty input", () => {
     expect(normalizeForMatch("")).toBe("");
     expect(normalizeForMatch(null)).toBe("");
-    // Symbol-only titles are real ("!!!" the band, "?" the album) — they keep
+    // Symbol-only titles are real ("!!!" the band, "?" the album) - they keep
     // their raw form instead of collapsing to "", which would merge them all.
     expect(normalizeForMatch("   ---   ")).toBe("---");
     expect(normalizeForMatch("!!!")).not.toBe(normalizeForMatch("?"));
@@ -57,14 +57,14 @@ describe("normalizeForMatch", () => {
   });
 
   it("keeps combining vowel signs so near-identical words stay distinct", () => {
-    // तुम vs तिम differ only in a \p{M} matra — dropping marks would merge them.
+    // तुम vs तिम differ only in a \p{M} matra - dropping marks would merge them.
     expect(normalizeForMatch("तुम")).not.toBe(normalizeForMatch("तिम"));
   });
 
   it("agrees with the extension's normalizer on the shared parity vectors", () => {
     // Pinned in BOTH repos (extension: test/song-match.test.mjs) so the two
     // normalizers can't silently drift on non-Latin content. Known
-    // divergence: đ (extension "d", here "dj") — deliberately not asserted.
+    // divergence: đ (extension "d", here "dj") - deliberately not asserted.
     expect(normalizeForMatch("तुम ही हो")).toBe("तुम ही हो");
     expect(normalizeForMatch("เธอคือของขวัญ")).toBe("เธอคือของขวัญ");
     expect(normalizeForMatch("月亮代表我的心")).toBe("月亮代表我的心");

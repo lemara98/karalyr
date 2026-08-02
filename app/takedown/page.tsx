@@ -4,7 +4,7 @@ import { TAKEDOWN_EMAIL } from "@/lib/takedown";
 import { TakedownForm } from "@/components/TakedownForm";
 
 export const metadata: Metadata = {
-  title: "Report a rights issue — Karalyr",
+  title: "Report a rights issue - Karalyr",
   description:
     "How to ask Karalyr to remove lyrics you hold the rights to, what happens next, and the repeat-infringer policy.",
 };
@@ -48,8 +48,8 @@ export default function TakedownPage() {
       <Section title="What Karalyr publishes">
         <p>
           Karalyr is a free, non-commercial, open-source database of word-synced
-          karaoke lyrics. Two things sit in it: <strong>timing data</strong> — the
-          millisecond positions of each word within a recording — and the{" "}
+          karaoke lyrics. Two things sit in it: <strong>timing data</strong> - the
+          millisecond positions of each word within a recording - and the{" "}
           <strong>lyric text</strong> those timings point at.
         </p>
         <p>
@@ -60,7 +60,7 @@ export default function TakedownPage() {
         <p>
           Lyric text is submitted by contributors, not compiled by the operator. We
           don&rsquo;t assert ownership of any lyrics here, and crediting a writer is not
-          a claim of licence — where a rightsholder objects, the answer is removal, not
+          a claim of licence - where a rightsholder objects, the answer is removal, not
           argument.
         </p>
       </Section>
@@ -68,7 +68,7 @@ export default function TakedownPage() {
       <Section title="What to include">
         <p>Whether you use the form or email, we need four things:</p>
         <ul className="ml-5 list-disc space-y-1.5">
-          <li>Who you are, and your relationship to the work — owner or authorised agent.</li>
+          <li>Who you are, and your relationship to the work - owner or authorised agent.</li>
           <li>Which work you hold rights in, identified clearly enough that we can be sure.</li>
           <li>What on Karalyr you say infringes it. Page URLs are ideal.</li>
           <li>An email address we can reply to.</li>
@@ -88,7 +88,7 @@ export default function TakedownPage() {
           </li>
           <li>
             <strong>Removed on acceptance.</strong> The lyric text is purged from the
-            database, not merely hidden — the revision row survives as a record of what
+            database, not merely hidden - the revision row survives as a record of what
             was removed and why, with no content in it.
           </li>
           <li>
@@ -97,8 +97,8 @@ export default function TakedownPage() {
             recording. If you believe it should also go, say so and we will discuss it.
           </li>
           <li>
-            <strong>If we decline</strong> — normally because the work is public domain,
-            openly licensed, or submitted by its own rightsholder — we will tell you why
+            <strong>If we decline</strong> - normally because the work is public domain,
+            openly licensed, or submitted by its own rightsholder - we will tell you why
             rather than ignore you.
           </li>
         </ul>
@@ -126,7 +126,7 @@ export default function TakedownPage() {
         <p>
           Contributors whose work was removed can object to the same address. Tell us
           what was removed and why you believe you hold the rights or that the work is
-          free to use — public-domain material, an open licence, or your own song. If
+          free to use - public-domain material, an open licence, or your own song. If
           you&rsquo;re right, we restore it and record that too.
         </p>
       </Section>
@@ -135,7 +135,7 @@ export default function TakedownPage() {
         <p>
           Please don&rsquo;t. Karalyr wants public-domain and traditional material,
           openly licensed work, and songs submitted by the people who wrote them. If
-          you&rsquo;re unsure whether something qualifies, ask before publishing — the{" "}
+          you&rsquo;re unsure whether something qualifies, ask before publishing - the{" "}
           <Link className={LINK_CLS} href="/contribute">
             Studio
           </Link>{" "}
@@ -151,7 +151,7 @@ export default function TakedownPage() {
           Send a notice
         </h2>
         <p className="mb-5 mt-2 text-[15px] text-[color:var(--color-text-muted)]">
-          Goes straight to the operator. Nothing is removed automatically — a person
+          Goes straight to the operator. Nothing is removed automatically - a person
           reads every notice.
         </p>
         <TakedownForm contactEmail={TAKEDOWN_EMAIL} />

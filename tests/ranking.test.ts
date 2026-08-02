@@ -4,7 +4,7 @@ import { tracks, type Revision, type Signal } from "@/lib/db/schema";
 import { makeDb, makeRevision, makeSignal, makeTrack, samplePayload } from "./helpers";
 import { eq } from "drizzle-orm";
 
-/** samplePayload with word timing stripped — the line-level legacy shape. */
+/** samplePayload with word timing stripped - the line-level legacy shape. */
 function lineLevelPayload(): string {
   const p = samplePayload();
   return JSON.stringify({

@@ -17,7 +17,7 @@ const SEEK_GRACE_MS = 300;
 /**
  * A PlaybackClock driven by an embedded YouTube player. The widget only
  * reports getCurrentTime() a few times per second, so between reports the
- * clock extrapolates from a wall-clock anchor — word-level highlights move
+ * clock extrapolates from a wall-clock anchor - word-level highlights move
  * smoothly instead of stepping.
  */
 function useYouTubeClock(videoId: string, durationMs: number) {
@@ -69,7 +69,7 @@ function useYouTubeClock(videoId: string, durationMs: number) {
               if (p) setTimeMs(Math.min(Math.round(p.getCurrentTime() * 1000), durationMs));
             },
             onError: () => {
-              // 2/5/100/101/150 — bad id, removed, or embedding disabled.
+              // 2/5/100/101/150 - bad id, removed, or embedding disabled.
               window.clearTimeout(readyTimeout);
               setFailed(true);
             },
@@ -162,13 +162,13 @@ export function YouTubeLyricsPlayer({
     return (
       <div className="space-y-4">
         <p className="text-xs text-[color:var(--color-text-dim)]">
-          This video can&rsquo;t be embedded — lyrics run on the playback simulator instead.
+          This video can&rsquo;t be embedded - lyrics run on the playback simulator instead.
         </p>
         <LyricsView
           payload={payload}
           clock={clock}
           durationMs={durationMs}
-          captionLead="Playback simulator — a plain clock, no audio. Click a line to jump."
+          captionLead="Playback simulator - a plain clock, no audio. Click a line to jump."
         />
       </div>
     );
@@ -183,7 +183,7 @@ export function YouTubeLyricsPlayer({
         />
       </div>
       {/* The absolute inner box makes the video's aspect height the row
-          height — the lyrics column fills it instead of stretching it. */}
+          height - the lyrics column fills it instead of stretching it. */}
       <div className="min-w-0 lg:relative">
         <div className="lg:absolute lg:inset-0">
           <LyricsView
@@ -191,7 +191,7 @@ export function YouTubeLyricsPlayer({
             clock={clock}
             durationMs={durationMs}
             fill
-            captionLead="Synced to the video — click a line to jump."
+            captionLead="Synced to the video - click a line to jump."
           />
         </div>
       </div>

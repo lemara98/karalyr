@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Refreshes the Supabase auth session on every request and rewrites the auth
 // cookies onto the response, so Server Components always see a fresh session.
-// Pure session refresher — Karalyr's /admin uses its own karalyr_admin cookie
+// Pure session refresher - Karalyr's /admin uses its own karalyr_admin cookie
 // and must NOT be gated here.
 //
 // Keep this lean: do NOT run other logic between createServerClient and

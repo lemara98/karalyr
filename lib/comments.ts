@@ -1,5 +1,5 @@
 // Validation and snapshot helpers for lyric comments (line-range anchored,
-// see lyricComments in lib/db/schema.ts). Pure — safe on server and client.
+// see lyricComments in lib/db/schema.ts). Pure - safe on server and client.
 import type { LyricsPayload } from "./formats/types";
 
 /** Cap on how many lines one comment may span (blocks whole-song highlights). */

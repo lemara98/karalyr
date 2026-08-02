@@ -7,7 +7,7 @@ this host takes that recording, aligns it against the job's lyrics, and reports
 the result to Karalyr.
 
 Nothing here downloads anything. The audio arrives from playback the operator
-started, which is why this exists at all — see capture-extension/README.md.
+started, which is why this exists at all - see capture-extension/README.md.
 
 Protocol (Chrome <-> host, 4-byte little-endian length prefix + UTF-8 JSON):
 
@@ -82,7 +82,7 @@ def refresh_config():
     """Re-read config before each job.
 
     Chrome keeps this process alive for as long as the extension's port is
-    open — across many songs — so reading the file once at startup meant an
+    open - across many songs - so reading the file once at startup meant an
     edit to it was silently ignored until the browser restarted. Editing the
     env file (say, to swap a stub aligner for the real one) now takes effect
     on the next claim.
@@ -196,7 +196,7 @@ def align_and_report(job, audio_path):
             out_path = tmpdir / "payload.json"
             lyrics_path.write_text(job.get("plain_lyrics") or "", encoding="utf-8")
 
-            send_log("starting the aligner (Demucs first — this is the slow part)")
+            send_log("starting the aligner (Demucs first - this is the slow part)")
             proc = subprocess.Popen(
                 [PYTHON_BIN, ALIGN_SCRIPT, "--audio", str(audio_path),
                  "--lyrics", str(lyrics_path), "--out", str(out_path)],
@@ -254,7 +254,7 @@ def align_and_report(job, audio_path):
 
 def main():
     if not KARALYR_URL or not WORKER_TOKEN:
-        send({"type": "error", "message": f"KARALYR_URL/WORKER_TOKEN missing — check {WORKER_ENV}"})
+        send({"type": "error", "message": f"KARALYR_URL/WORKER_TOKEN missing - check {WORKER_ENV}"})
         return
 
     job = None
@@ -306,7 +306,7 @@ def main():
             chunk = base64.b64decode(message.get("data") or "")
             audio_bytes += len(chunk)
             if audio_bytes > MAX_AUDIO_BYTES:
-                send({"type": "error", "message": "capture too large — aborting"})
+                send({"type": "error", "message": "capture too large - aborting"})
                 audio_file.close()
                 os.unlink(audio_file.name)
                 audio_file = None

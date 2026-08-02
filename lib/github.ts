@@ -77,10 +77,10 @@ export type Sponsor = {
 };
 
 export type SponsorsResult = {
-  /** false when no GITHUB_TOKEN is set — drives the "not wired up yet" state. */
+  /** false when no GITHUB_TOKEN is set - drives the "not wired up yet" state. */
   configured: boolean;
   public: Sponsor[];
-  /** Sponsors who chose to stay private on GitHub — shown anonymously. */
+  /** Sponsors who chose to stay private on GitHub - shown anonymously. */
   privateCount: number;
 };
 

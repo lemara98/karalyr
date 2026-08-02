@@ -39,7 +39,7 @@ interface SyncSource {
   createdAt: number;
 }
 
-/** The candidate's player, always visible — the moderation list is short. */
+/** The candidate's player, always visible - the moderation list is short. */
 function JobEmbed({ videoKey, title }: { videoKey: string | null; title: string }) {
   const video = parseVideoKey(videoKey);
   if (!video) return null;
@@ -47,7 +47,7 @@ function JobEmbed({ videoKey, title }: { videoKey: string | null; title: string 
     <div className="relative aspect-video w-full max-w-md flex-none overflow-hidden rounded-xl border border-white/10">
       <iframe
         src={`https://www.youtube-nocookie.com/embed/${video.id}?rel=0`}
-        title={`YouTube — ${title}`}
+        title={`YouTube - ${title}`}
         loading="lazy"
         allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
@@ -59,7 +59,7 @@ function JobEmbed({ videoKey, title }: { videoKey: string | null; title: string 
     <div className="w-full max-w-md flex-none self-start overflow-hidden rounded-xl border border-white/10">
       <iframe
         src={`https://open.spotify.com/embed/track/${video.id}`}
-        title={`Spotify — ${title}`}
+        title={`Spotify - ${title}`}
         width="100%"
         height={152}
         loading="lazy"
@@ -259,7 +259,7 @@ export function AdminPanel() {
     const body = await res.json().catch(() => ({}));
     setMessage(
       res.ok
-        ? `${action} ok — best revision is now #${body.best_revision_id}`
+        ? `${action} ok - best revision is now #${body.best_revision_id}`
         : body.message ?? "Action failed"
     );
     load();
@@ -282,7 +282,7 @@ export function AdminPanel() {
     });
     const body = await res.json().catch(() => ({}));
     if (res.status === 409) {
-      setMessage(`Sync job #${jobId} changed state in the meantime — refreshing…`);
+      setMessage(`Sync job #${jobId} changed state in the meantime - refreshing…`);
     } else {
       setMessage(res.ok ? `Sync job #${jobId}: ${action} ok` : body.message ?? "Action failed");
     }
@@ -393,7 +393,7 @@ export function AdminPanel() {
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <span className="font-medium">
-                    {item.track.artistName} — {item.track.trackName}
+                    {item.track.artistName} - {item.track.trackName}
                   </span>
                   <span className="ml-2 text-sm text-[color:var(--color-text-dim)]">
                     revision #{item.revision.id} ({item.revision.source}
@@ -452,11 +452,11 @@ export function AdminPanel() {
         </div>
 
         <p className="mb-3 max-w-2xl text-sm text-[color:var(--color-text-dim)]">
-          Demand only — nothing here is work yet. Promoting a song queues it for the aligner,
+          Demand only - nothing here is work yet. Promoting a song queues it for the aligner,
           so only promote once you have a lawful way to get its audio.
         </p>
 
-        {/* Per-language demand at a glance — which market wants attention next. */}
+        {/* Per-language demand at a glance - which market wants attention next. */}
         {syncWanted && syncWanted.length > 0 && (
           <p className="mb-3 flex flex-wrap gap-2 text-xs">
             {Object.entries(
@@ -490,9 +490,9 @@ export function AdminPanel() {
                   <a
                     href={`/queue/${j.id}`}
                     className="font-medium text-[color:var(--klr-b)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
-                    title="Open the candidate page — full lyrics, player, comments"
+                    title="Open the candidate page - full lyrics, player, comments"
                   >
-                    {j.artist_name} — {j.track_name} →
+                    {j.artist_name} - {j.track_name} →
                   </a>{" "}
                   <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[color:var(--klr-a)]">
                     {j.source}
@@ -500,7 +500,7 @@ export function AdminPanel() {
                   {j.language && (
                     <span
                       className="ml-1.5 rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[color:var(--klr-b)]"
-                      title="Lyrics language — passed to the aligner as --language"
+                      title="Lyrics language - passed to the aligner as --language"
                     >
                       {j.language}
                     </span>
@@ -608,15 +608,15 @@ export function AdminPanel() {
                   </a>
                 ) : (
                   <span className="text-[color:var(--color-text-dim)]">
-                    No link — asked for by artist and title
+                    No link - asked for by artist and title
                   </span>
                 )}
               </p>
-              {/* Player + lyrics side by side, always visible — the same
+              {/* Player + lyrics side by side, always visible - the same
                   at-a-glance layout the public queue previews use. The
                   lyrics column swaps for the correction editor when open. */}
               <div className="mt-3 flex flex-wrap gap-5">
-                <JobEmbed videoKey={j.video_key} title={`${j.artist_name} — ${j.track_name}`} />
+                <JobEmbed videoKey={j.video_key} title={`${j.artist_name} - ${j.track_name}`} />
                 {editTarget === j.id ? (
                   <div className="min-w-0 flex-1 basis-56">
                     <p className="klr-eyebrow mb-1.5 !text-[10px]">CORRECT THE SONG</p>
@@ -725,7 +725,7 @@ export function AdminPanel() {
             >
               <div className="min-w-0 flex-1 text-sm">
                 <span className="font-medium">
-                  {j.artist_name} — {j.track_name}
+                  {j.artist_name} - {j.track_name}
                 </span>{" "}
                 <SyncStatusChip status={j.status} />
                 <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">
@@ -757,7 +757,7 @@ export function AdminPanel() {
             >
               <div className="min-w-0 flex-1 text-sm">
                 <span className="font-medium">
-                  {j.artist_name} — {j.track_name}
+                  {j.artist_name} - {j.track_name}
                 </span>{" "}
                 <SyncStatusChip status={j.status} />
                 {j.status === "failed" && j.last_error && (
@@ -823,7 +823,7 @@ export function AdminPanel() {
                     })}
                     className="font-medium text-[color:var(--klr-b)] hover:underline"
                   >
-                    {c.artist_name} — {c.track_name}
+                    {c.artist_name} - {c.track_name}
                   </a>
                   <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">
                     lines {c.start_line + 1}–{c.end_line + 1} ·{" "}
@@ -877,7 +877,7 @@ export function AdminPanel() {
                     href={`/queue/${c.job_id}`}
                     className="font-medium text-[color:var(--klr-b)] hover:underline"
                   >
-                    {c.artist_name} — {c.track_name}
+                    {c.artist_name} - {c.track_name}
                   </a>
                   <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">
                     {c.status.replaceAll("_", " ")} · {c.author_name ?? "Anonymous"}{" "}

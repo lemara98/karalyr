@@ -1,7 +1,7 @@
 import { useId } from "react";
 
 /**
- * Karafilt's EQ-bar K, inlined from karafilt.com's logo.svg — the sibling
+ * Karafilt's EQ-bar K, inlined from karafilt.com's logo.svg - the sibling
  * mark to KaralyrMark, used wherever we point people at the extension.
  */
 export function KarafiltMark({ className }: { className?: string }) {

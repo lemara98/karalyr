@@ -26,7 +26,7 @@ export default async function TakedownsPage() {
             <Link href="/takedown" className="text-[color:var(--klr-b)] hover:underline">
               /takedown
             </Link>
-            . Removing purges the lyric payload — the revision row stays as a record,
+            . Removing purges the lyric payload - the revision row stays as a record,
             with no content in it. There is no undo.
           </p>
           <TakedownAdmin />

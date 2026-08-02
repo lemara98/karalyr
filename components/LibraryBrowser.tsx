@@ -111,7 +111,7 @@ export function LibraryBrowser({
     if (!node || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(
       (entries) => {
-        // Never auto-retry after a failure — the button does that, so a
+        // Never auto-retry after a failure - the button does that, so a
         // broken connection cannot spin on the sentinel.
         if (entries[0].isIntersecting && !state.current.error) void loadMore();
       },
@@ -152,7 +152,7 @@ export function LibraryBrowser({
             className="text-[11px] text-[color:var(--color-text-dim)]"
             style={{ fontFamily: "var(--font-mono)" }}
           >
-            {items.length.toLocaleString("en-US")} of {total.toLocaleString("en-US")} — that&apos;s
+            {items.length.toLocaleString("en-US")} of {total.toLocaleString("en-US")} - that&apos;s
             every song.
           </p>
         )}

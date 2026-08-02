@@ -22,7 +22,7 @@ const bodySchema = z
     { message: "Nothing to change" }
   );
 
-/** Admin correction of a candidate's lyrics and/or metadata — see editJob for the rules. */
+/** Admin correction of a candidate's lyrics and/or metadata - see editJob for the rules. */
 export async function POST(req: Request) {
   if (!(await isAdminRequest())) return apiError(401, "Unauthorized", "Admin access required");
 

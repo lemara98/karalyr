@@ -5,7 +5,7 @@ import { apiError, corsOptions, json } from "@/lib/api-helpers";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 
 // last_error holds the raw worker output tail (yt-dlp/aligner tracebacks,
-// worker-machine paths) — admin material. Submitters get a short summary.
+// worker-machine paths) - admin material. Submitters get a short summary.
 function summarizeError(raw: string | null): string | null {
   if (!raw) return null;
   const t = raw.toLowerCase();

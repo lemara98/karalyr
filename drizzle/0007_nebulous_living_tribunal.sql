@@ -41,7 +41,7 @@ CREATE TABLE `__new_sync_jobs` (
 );
 --> statement-breakpoint
 -- HAND-EDITED: drizzle-kit emitted `SELECT ..., "song_key", ... FROM sync_jobs`,
--- but song_key is the column being ADDED — it does not exist on the old table,
+-- but song_key is the column being ADDED - it does not exist on the old table,
 -- so the statement fails at prepare time whether or not any rows exist.
 --
 -- Backfilled instead with a SQL approximation of lib/song-key.ts. It lowercases

@@ -49,7 +49,7 @@ async function main() {
   });
 
   console.log(
-    `Imported revision #${revision.id} (status ${revision.status}) on track #${trackRow.id} — ` +
+    `Imported revision #${revision.id} (status ${revision.status}) on track #${trackRow.id} - ` +
       `${payload.lines.length} lines, word timing: ${payload.meta.has_word_timing}`
   );
   console.log(`View it: http://localhost:3000${trackPath(trackRow)}`);

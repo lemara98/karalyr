@@ -50,7 +50,7 @@ export async function POST(req: Request) {
   try {
     await db.insert(syncJobVotes).values({ jobId: job.id, userId: user.id, createdAt: Date.now() });
   } catch (err) {
-    // Already backed it — idempotent, not an error worth showing anyone.
+    // Already backed it - idempotent, not an error worth showing anyone.
     const dup = err instanceof Error && String(err.cause ?? err).includes("UNIQUE constraint failed");
     if (!dup) throw err;
   }

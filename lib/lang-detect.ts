@@ -3,7 +3,7 @@
  * explicit language hint gets one guessed from the dominant Unicode script
  * of its lyrics. Only scripts that need aligner special-casing are detected;
  * plain-Latin lyrics return null (correct for the Balkan catalog as well as
- * Indonesian/Tagalog — the aligner default handles all of them).
+ * Indonesian/Tagalog - the aligner default handles all of them).
  *
  * Pure and dependency-free. Codes are ISO 639-1, matching worker/align.py's
  * LANGUAGES table.

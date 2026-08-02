@@ -85,7 +85,7 @@ export function SearchBox() {
               >
                 <span className="min-w-0 truncate">
                   <span className="font-medium">{r.artistName}</span>
-                  <span className="text-[color:var(--color-text-dim)]"> — </span>
+                  <span className="text-[color:var(--color-text-dim)]"> - </span>
                   {r.trackName}
                   {r.albumName && (
                     <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">

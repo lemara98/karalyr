@@ -28,8 +28,8 @@ import { WordSyncBadge } from "@/components/WordSyncBadge";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Library — Karalyr",
-  description: "Every song with karaoke lyrics on Karalyr — the newest arrivals and the crowd's top rated.",
+  title: "Library - Karalyr",
+  description: "Every song with karaoke lyrics on Karalyr - the newest arrivals and the crowd's top rated.",
 };
 
 /** First linked YouTube video / Spotify track per platform, if any. */
@@ -94,7 +94,7 @@ function TrackCard({ track, links }: { track: LibraryTrack; links?: TrackLinks }
         <div className="relative aspect-video overflow-hidden rounded-xl border border-white/10">
           <iframe
             src={`https://www.youtube-nocookie.com/embed/${links.youtube}?rel=0`}
-            title={`YouTube — ${track.artistName} – ${track.trackName}`}
+            title={`YouTube - ${track.artistName} – ${track.trackName}`}
             loading="lazy"
             allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
@@ -106,7 +106,7 @@ function TrackCard({ track, links }: { track: LibraryTrack; links?: TrackLinks }
         <div className="overflow-hidden rounded-xl border border-white/10">
           <iframe
             src={`https://open.spotify.com/embed/track/${links.spotify}`}
-            title={`Spotify — ${track.artistName} – ${track.trackName}`}
+            title={`Spotify - ${track.artistName} – ${track.trackName}`}
             width="100%"
             height={152}
             loading="lazy"
@@ -163,7 +163,7 @@ export default async function LibraryPage({
   searchParams: Promise<{ lang?: string }>;
 }) {
   const db = getDb();
-  // /library?lang=hi — shareable per-market catalog view. Invalid values
+  // /library?lang=hi - shareable per-market catalog view. Invalid values
   // just mean "no filter".
   const rawLang = (await searchParams).lang;
   const lang = rawLang && /^[a-z]{2,3}$/.test(rawLang) ? rawLang : null;
@@ -198,7 +198,7 @@ export default async function LibraryPage({
   // The grid: only tracks with real usage or a positive vote balance.
   const top = ranked.filter((t) => t.singers > 0 || t.score > 0);
 
-  // Linked videos for the grid cards — first YouTube and Spotify key each.
+  // Linked videos for the grid cards - first YouTube and Spotify key each.
   const links = new Map<number, TrackLinks>();
   if (top.length > 0) {
     const rows = await db
@@ -246,7 +246,7 @@ export default async function LibraryPage({
             <span style={{ fontFamily: "var(--font-mono)" }}>
               {readyStats.n.toLocaleString("en-US")}
             </span>{" "}
-            {readyStats.n === 1 ? "song" : "songs"} with karaoke lyrics — the newest arrivals
+            {readyStats.n === 1 ? "song" : "songs"} with karaoke lyrics - the newest arrivals
             on rotation, the crowd&apos;s favorites below.
           </p>
           <SearchBox />
@@ -275,7 +275,7 @@ export default async function LibraryPage({
             <StatCard
               label="LYRIC REVISIONS"
               value={revisionStats.n.toLocaleString("en-US")}
-              hint="Immutable — nothing is ever overwritten"
+              hint="Immutable - nothing is ever overwritten"
             />
           </div>
         </div>
@@ -315,7 +315,7 @@ export default async function LibraryPage({
         <div className="mx-auto max-w-6xl px-6 py-12">
           <p className="klr-eyebrow !text-[11px]">TOP RATED &amp; MOST SUNG</p>
           <p className="mb-4 mt-1.5 text-sm text-[color:var(--color-text-muted)]">
-            The library&apos;s proven songs — ranked by votes and singers, with the linked
+            The library&apos;s proven songs - ranked by votes and singers, with the linked
             YouTube or Spotify player where one exists.
           </p>
           {top.length > 0 ? (
@@ -327,7 +327,7 @@ export default async function LibraryPage({
           ) : (
             <div className="klr-card p-8 text-center text-sm text-[color:var(--color-text-dim)]">
               No songs have usage or votes yet. Sing one with Karafilt, or upvote lyrics
-              that worked — favorites show up here.
+              that worked - favorites show up here.
             </div>
           )}
         </div>
@@ -339,7 +339,7 @@ export default async function LibraryPage({
           <div className="mx-auto max-w-6xl px-6 py-12">
             <p className="klr-eyebrow !text-[11px]">EVERY SONG</p>
             <p className="mb-4 mt-1.5 text-sm text-[color:var(--color-text-muted)]">
-              The whole library, newest first — keep scrolling and the next page loads
+              The whole library, newest first - keep scrolling and the next page loads
               itself.
             </p>
             {languages.length > 1 && (
@@ -372,7 +372,7 @@ export default async function LibraryPage({
               />
             ) : (
               <div className="klr-card p-8 text-center text-sm text-[color:var(--color-text-dim)]">
-                No songs in this language yet — request one on the queue and be the first.
+                No songs in this language yet - request one on the queue and be the first.
               </div>
             )}
           </div>

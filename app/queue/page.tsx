@@ -7,13 +7,13 @@ import { WantedList } from "@/components/WantedList";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "The queue — Karalyr",
-  description: "Songs waiting for word-timed karaoke lyrics — search them, back them, discuss them.",
+  title: "The queue - Karalyr",
+  description: "Songs waiting for word-timed karaoke lyrics - search them, back them, discuss them.",
 };
 
 const PER_PAGE = 20;
 
-/** /queue?q=...&page=N — omits defaults so bare /queue stays canonical. */
+/** /queue?q=...&page=N - omits defaults so bare /queue stays canonical. */
 function queueHref(q: string, page: number): string {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
@@ -50,7 +50,7 @@ export default async function QueuePage({
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-[color:var(--color-text-muted)]">
           Every song here has lyrics but no word-by-word timing yet. Asking for one tells us
-          what to work on next — the more people who want a song, the higher it climbs.
+          what to work on next - the more people who want a song, the higher it climbs.
         </p>
       </div>
 
@@ -97,7 +97,7 @@ export default async function QueuePage({
           <WantedList songs={songs} startRank={(page - 1) * PER_PAGE + 1} />
         ) : (
           <p className="text-sm text-[color:var(--color-text-muted)]">
-            No open requests match — try fewer words, or a line from the lyrics.
+            No open requests match - try fewer words, or a line from the lyrics.
           </p>
         )}
 
@@ -135,7 +135,7 @@ export default async function QueuePage({
             <h3 className="font-medium">Install Karafilt</h3>
             <p className="text-sm text-[color:var(--color-text-muted)]">
               Play music as you normally would. When a song has lyrics but no word timing,
-              the extension adds it here for you — nothing to fill in.
+              the extension adds it here for you - nothing to fill in.
             </p>
             <p className="text-sm text-[color:var(--color-text-muted)]">
               It also times songs while you listen, so playing something in the queue is the
@@ -148,7 +148,7 @@ export default async function QueuePage({
             <h3 className="font-medium">Ask in the Studio</h3>
             <p className="text-sm text-[color:var(--color-text-muted)]">
               Paste the artist, title and the lyrics. A link to where the song plays is
-              optional, but it helps — it makes the request traceable to the right recording.
+              optional, but it helps - it makes the request traceable to the right recording.
             </p>
             <Link href="/contribute" className="btn btn-secondary btn-sm">
               Open the Studio
@@ -183,7 +183,7 @@ export default async function QueuePage({
               The result is a normal revision.
             </strong>{" "}
             It arrives word-synced at the <code>auto_aligned</code> tier, so corrections and
-            votes still apply — and the request closes itself.
+            votes still apply - and the request closes itself.
           </li>
         </ul>
       </section>

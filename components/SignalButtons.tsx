@@ -25,7 +25,7 @@ export function SignalButtons({ revisionId }: { revisionId: number }) {
     if (body.promoted) {
       setMessage("Thanks! This revision was promoted a tier.");
     } else if (body.correction_revision_id) {
-      setMessage("Thanks! Enough offset reports agreed — an auto-corrected revision was created.");
+      setMessage("Thanks! Enough offset reports agreed - an auto-corrected revision was created.");
     } else {
       setMessage("Thanks for the feedback!");
     }

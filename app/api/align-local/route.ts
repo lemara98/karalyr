@@ -8,7 +8,7 @@ import {
 import { detectLyricsLanguage } from "@/lib/lang-detect";
 
 // Local-only: spawns the alignment worker on this machine. Hidden unless
-// ENABLE_LOCAL_ALIGN=1 and the worker venv exists — never enable on a
+// ENABLE_LOCAL_ALIGN=1 and the worker venv exists - never enable on a
 // hosted deployment.
 
 const bodySchema = z.object({
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   }
 
   if (runningAlignJob()) {
-    return apiError(429, "Busy", "An alignment job is already running — one at a time");
+    return apiError(429, "Busy", "An alignment job is already running - one at a time");
   }
 
   const job = startAlignJob({

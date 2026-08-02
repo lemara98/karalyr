@@ -1,6 +1,6 @@
 /**
  * Static YouTube iframe for pages with a linked video but no lyrics to
- * sync — no IFrame API, nothing to drive. The synced player lives in
+ * sync - no IFrame API, nothing to drive. The synced player lives in
  * YouTubeLyricsPlayer.
  */
 export function YouTubeEmbed({ videoId }: { videoId: string }) {

@@ -18,7 +18,7 @@ import { wordSeparators } from "@/lib/word-separators";
  * Highlights fire this much ahead of the playback clock. Compensates two
  * constant lags: the MMS/CTC aligner marks word onsets 1-3 frames (20-60ms)
  * after the true acoustic onset, and the rAF-driven state paints one frame
- * (~17ms) behind the audio. Applied only while playing — paused scrubbing
+ * (~17ms) behind the audio. Applied only while playing - paused scrubbing
  * and seeks stay exact.
  */
 export const LYRIC_LEAD_MS = 50;
@@ -146,7 +146,7 @@ export function LyricsView({
     try {
       setFocus(localStorage.getItem("klr-focus") === "1");
     } catch {
-      // storage unavailable — keep default
+      // storage unavailable - keep default
     }
   }, []);
   const toggleFocus = useCallback(() => {
@@ -154,7 +154,7 @@ export function LyricsView({
       try {
         localStorage.setItem("klr-focus", f ? "0" : "1");
       } catch {
-        // storage unavailable — state still toggles for this session
+        // storage unavailable - state still toggles for this session
       }
       return !f;
     });
@@ -168,7 +168,7 @@ export function LyricsView({
   const activeGap = gaps.find((g) => timeMs >= g.start && timeMs < g.end) ?? null;
 
   // Count-in: the bar FILLS toward the downbeat while the number counts the
-  // seconds left. The overlay eases out between 2s and 1s remaining — fully
+  // seconds left. The overlay eases out between 2s and 1s remaining - fully
   // gone at 1s, when the upcoming text takes the stage (activeGap itself
   // runs to the true line start). Opacity is clock-driven per frame, so no
   // CSS transition (it would retarget every frame and stutter).
@@ -177,12 +177,12 @@ export function LyricsView({
     if (!activeGap) return 0;
     const entry = Math.min(1, (timeMs - activeGap.start) / 450);
     const linear = Math.min(1, Math.max(0, (activeGap.end - timeMs - 1000) / 1000));
-    const exit = linear * linear * (3 - 2 * linear); // smoothstep — gentle ends
+    const exit = linear * linear * (3 - 2 * linear); // smoothstep - gentle ends
     return Math.min(entry, exit);
   })();
 
   // While the count-in is up, no line is active. In the gap's final second
-  // the UPCOMING line takes the stage in "get ready" state — lit, every word
+  // the UPCOMING line takes the stage in "get ready" state - lit, every word
   // still dim, the wipe starting exactly on the beat. (In focus mode this is
   // also what swaps the upcoming page in.)
   const activeIndex = activeGap
@@ -226,7 +226,7 @@ export function LyricsView({
     const el = activeRef.current;
     const box = linesRef.current;
     if (!el || !box) return;
-    // Scroll ONLY the lyrics box — scrollIntoView would also scroll every
+    // Scroll ONLY the lyrics box - scrollIntoView would also scroll every
     // ancestor including the page, yanking the reader back to the card.
     const delta = el.getBoundingClientRect().top - box.getBoundingClientRect().top;
     box.scrollTo({
@@ -350,7 +350,7 @@ export function LyricsPlayer({
       payload={payload}
       clock={clock}
       durationMs={durationMs}
-      captionLead="Playback simulator — a plain clock, no audio. Click a line to jump."
+      captionLead="Playback simulator - a plain clock, no audio. Click a line to jump."
     />
   );
 }

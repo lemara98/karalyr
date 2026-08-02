@@ -48,7 +48,7 @@ export async function GET(req: Request) {
   }
 
   // Miss: Karalyr only serves word-synced lyrics, so there is nothing to
-  // fall back to here — clients own their own fallback chain (e.g. LRCLIB)
+  // fall back to here - clients own their own fallback chain (e.g. LRCLIB)
   // and can request a sync via the wanted queue.
   return apiError(404, "TrackNotFound", "Failed to find specified track");
 }

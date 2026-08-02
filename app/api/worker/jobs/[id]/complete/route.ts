@@ -12,7 +12,7 @@ const bodySchema = z.object({
   // yt-dlp metadata; the job's intake fields win when present (artist/track
   // are non-null at intake, so in practice meta only ever fills duration).
   // Deliberately tolerant: align.py can leave placeholder strings in the
-  // sidecar ("SECONDS") and the daemon sends null when the file is missing —
+  // sidecar ("SECONDS") and the daemon sends null when the file is missing -
   // bad meta must never 400 an otherwise valid payload (the daemon treats a
   // /complete 400 as a permanent failure).
   meta: z
@@ -46,7 +46,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const job = await getOwnedProcessingJob(db, jobId, body.worker_id);
   if (!job) return apiError(409, "NotOwner", "Job is not processing under this worker");
 
-  // On invalid payload the job stays processing — the worker follows up with
+  // On invalid payload the job stays processing - the worker follows up with
   // a permanent /fail.
   let payload: LyricsPayload;
   try {
@@ -74,7 +74,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       duration,
       videoUrl: job.videoUrl,
       submitterFingerprint: "system:sync-queue",
-      // km/lo have no word tokenizer — the worker runs the aligner in
+      // km/lo have no word tokenizer - the worker runs the aligner in
       // --line-level mode and the resulting line-synced payload is the
       // deliverable, not a failed word alignment.
       allowLineLevel: job.language === "km" || job.language === "lo",
@@ -86,7 +86,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     throw err;
   }
 
-  // Lease lost mid-import: the revision already landed and stays — aligned
+  // Lease lost mid-import: the revision already landed and stays - aligned
   // lyrics are worth keeping regardless of queue bookkeeping. The 409 only
   // tells this worker to stop touching the job.
   const done = await completeJob(db, jobId, body.worker_id, {

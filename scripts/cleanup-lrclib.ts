@@ -37,7 +37,7 @@ async function main() {
     console.log(`Already synced elsewhere:   ${summary.alreadySynced}`);
     console.log(`Rejected (short lyrics):    ${summary.badLyrics}`);
   } else {
-    console.log("\nDry run — nothing was written. Re-run with --apply to execute.");
+    console.log("\nDry run - nothing was written. Re-run with --apply to execute.");
   }
 }
 

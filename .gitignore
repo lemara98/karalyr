@@ -4,7 +4,7 @@ out/
 data/
 *.db
 *.db-journal
-# Every local env file. Only .env.example is tracked — a narrower pattern let
+# Every local env file. Only .env.example is tracked - a narrower pattern let
 # .env.production.local (real generated secrets) slip through.
 .env
 .env.*

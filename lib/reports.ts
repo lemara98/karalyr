@@ -1,5 +1,5 @@
 /**
- * Shared metadata for the "Report lyrics" content-quality signal — the reason
+ * Shared metadata for the "Report lyrics" content-quality signal - the reason
  * a listener can flag that the lyrics *content* is wrong (as opposed to the
  * timing, which goes through offset_correction). Kept free of server/DB
  * imports so both the API route and the client dialog can import it.

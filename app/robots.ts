@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
       // Moderation and sign-in redirect unauthenticated crawlers around, and
-      // API/auth handlers aren't pages — keep them out of the crawl entirely.
+      // API/auth handlers aren't pages - keep them out of the crawl entirely.
       disallow: ["/admin", "/login", "/api/", "/auth/"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,

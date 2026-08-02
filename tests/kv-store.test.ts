@@ -103,7 +103,7 @@ describe.each(IMPLEMENTATIONS)("%s", (_name, make) => {
 
 describe("TursoStore concurrency", () => {
   it("loses no increments when callers race", async () => {
-    // Read-then-write would let two callers both read 9 and both write 10 —
+    // Read-then-write would let two callers both read 9 and both write 10 -
     // exactly the race a rate limit exists to lose. A single upsert cannot.
     const s = new TursoStore(db);
     const results = await Promise.all(
@@ -156,7 +156,7 @@ describe("pow replay guard, end to end", () => {
     const store = new TursoStore(db);
     expect((await verifyAndConsumeSolution(store, challenge.prefix, nonce)).ok).toBe(true);
 
-    // Same solved nonce again — the only thing refusing it is the store entry.
+    // Same solved nonce again - the only thing refusing it is the store entry.
     const replay = await verifyAndConsumeSolution(store, challenge.prefix, nonce);
     expect(replay.ok).toBe(false);
     expect(replay.ok === false && replay.reason).toBe("already_used");

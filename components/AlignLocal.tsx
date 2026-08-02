@@ -85,7 +85,7 @@ export function AlignLocal() {
       <p className="text-xs leading-relaxed text-[color:var(--klr-hi)]">
         Personal use only: downloading from YouTube violates YouTube&apos;s
         Terms of Service. The audio is processed in a temp folder and deleted
-        when the run finishes — only timing data is kept.
+        when the run finishes - only timing data is kept.
       </p>
 
       <label className="block text-sm text-[color:var(--color-text-muted)]">
@@ -100,7 +100,7 @@ export function AlignLocal() {
       </label>
 
       <label className="block text-sm text-[color:var(--color-text-muted)]">
-        Plain lyrics * — one sung line per row, include repeated choruses
+        Plain lyrics * - one sung line per row, include repeated choruses
         {lineCount > 0 && (
           <span className="ml-2 text-xs text-[color:var(--color-text-dim)]">
             {lineCount} lines
@@ -119,7 +119,7 @@ export function AlignLocal() {
 
       <details className="text-sm text-[color:var(--color-text-muted)]">
         <summary className="cursor-pointer text-[color:var(--color-text-dim)]">
-          Artist / title / duration overrides (optional — auto-detected from the video)
+          Artist / title / duration overrides (optional - auto-detected from the video)
         </summary>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <input className="field" placeholder="Artist" value={artist} onChange={(e) => setArtist(e.target.value)} disabled={busy} />

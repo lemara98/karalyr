@@ -8,10 +8,10 @@ import { songKey } from "../lib/song-key";
  * One-off: recompute sync_jobs.song_key after the non-Latin fix in
  * lib/song-key.ts. Old keys erased whole scripts, so every Devanagari/Thai/
  * Han request collided on the key "|". Recomputes active rows only (finished
- * rows keep their historical key — nothing dedups against them). When two
+ * rows keep their historical key - nothing dedups against them). When two
  * active rows now normalize to the same key (they were true duplicates all
  * along), the OLDER row keeps the key and the newer ones are logged for
- * manual review — no automatic vote merging.
+ * manual review - no automatic vote merging.
  *
  * Run with a verified backup: npx tsx scripts/backfill-song-keys.ts
  * Dry run (default): shows what would change. Apply with --apply.
@@ -48,10 +48,10 @@ async function main() {
   console.log(`${rows.length} active jobs; ${updates.length} keys change; ${conflicts.length} true duplicates.`);
   for (const u of updates) console.log(`  #${u.id}: "${u.from}" -> "${u.to}"`);
   for (const c of conflicts)
-    console.log(`  DUPLICATE #${c.id} of #${c.keeperId} ("${c.key}") — merge or cancel manually`);
+    console.log(`  DUPLICATE #${c.id} of #${c.keeperId} ("${c.key}") - merge or cancel manually`);
 
   if (!apply) {
-    console.log("Dry run — re-run with --apply to write.");
+    console.log("Dry run - re-run with --apply to write.");
     return;
   }
   for (const u of updates) {

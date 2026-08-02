@@ -215,7 +215,7 @@ describe("syllable timing", () => {
     expect(text).toContain("<00:01.00>Hel<00:01.20>lo <00:01.50>there");
     const back = parseEnhancedLrc(text);
     expect(back.lines[0].text).toBe("Hello there");
-    // The last syllable's end stretches to the next word's tag — the same
+    // The last syllable's end stretches to the next word's tag - the same
     // lossiness word-level Enhanced LRC always had.
     expect(back.lines[0].words![0].syllables).toEqual([
       { text: "Hel", start_ms: 1000, end_ms: 1200 },

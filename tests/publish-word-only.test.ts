@@ -5,7 +5,7 @@ import { revisions, tracks } from "@/lib/db/schema";
 import { makeDb, samplePayload } from "./helpers";
 
 // Route-level tests for the word-only publish rule. PoW and rate limiting are
-// bypassed — they have their own tests; here only the payload gate matters.
+// bypassed - they have their own tests; here only the payload gate matters.
 let testDb: Db;
 
 vi.mock("@/lib/db/client", async (importOriginal) => {

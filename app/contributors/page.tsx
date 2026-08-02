@@ -3,7 +3,7 @@ import { ContributorsGrid } from "@/components/ContributorsGrid";
 import { getContributors } from "@/lib/github";
 
 export const metadata: Metadata = {
-  title: "Contributors — Karalyr",
+  title: "Contributors - Karalyr",
   description:
     "The people who build Karalyr. Karalyr is open source, and every contribution, big or small, keeps it going.",
 };

@@ -50,7 +50,7 @@ export async function generateMetadata({
   if (!Number.isFinite(jobId)) return {};
   const detail = await getWantedSongDetail(getDb(), jobId);
   if (!detail) return {};
-  return { title: `${detail.job.trackName} — ${detail.job.artistName} — Karalyr` };
+  return { title: `${detail.job.trackName} - ${detail.job.artistName} - Karalyr` };
 }
 
 export default async function QueueCandidatePage({
@@ -132,7 +132,7 @@ export default async function QueueCandidatePage({
             href={trackPath({ ...job, id: libraryTrackId })}
             className="text-sm text-[color:var(--color-text-muted)] underline-offset-4 hover:text-[color:var(--klr-hi)] hover:underline"
           >
-            In the library — no word timing yet
+            In the library - no word timing yet
           </Link>
         )}
       </div>

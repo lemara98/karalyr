@@ -56,7 +56,7 @@ export async function GET(req: Request) {
   const jobs = await listSyncJobs(db, view);
 
   // Demand and every link anyone offered. Dedup collapses on song identity, so
-  // the display link is only one of possibly several — the operator needs all
+  // the display link is only one of possibly several - the operator needs all
   // of them to pick which recording to actually work from.
   const enriched = await Promise.all(
     jobs.map(async (j) => ({

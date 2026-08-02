@@ -12,7 +12,7 @@ import {
 /**
  * Net quality score for a revision: distinct fingerprints for each positive
  * type (explicit_up, clean_playthrough) minus distinct fingerprints for the
- * negatives (explicit_down and content_report — wrong lyrics content).
+ * negatives (explicit_down and content_report - wrong lyrics content).
  * Duplicate signals from one fingerprint count once per type.
  */
 export function netScore(revisionSignals: Signal[]): number {
@@ -29,7 +29,7 @@ export function netScore(revisionSignals: Signal[]): number {
 /**
  * Karalyr serves word/syllable-synced lyrics only. Legacy line-level rows
  * (pre word-only policy, restored backups) must never become the best
- * revision — unparseable payloads count as line-level.
+ * revision - unparseable payloads count as line-level.
  */
 function hasWordTiming(rev: Revision): boolean {
   try {
@@ -90,7 +90,7 @@ export async function computeBestRevision(db: Db, trackId: number): Promise<numb
         language = meta.language.trim().toLowerCase();
       }
     } catch {
-      // unparseable payload — leave language unknown
+      // unparseable payload - leave language unknown
     }
   }
   await db

@@ -31,7 +31,7 @@ export const STATUSES = [
   "reverted",
   // Removed on a rights complaint. Terminal and distinct from "rejected":
   // rejected is a quality call an admin can reverse, taken_down is a legal
-  // one. The row survives for the audit trail but its payload is purged —
+  // one. The row survives for the audit trail but its payload is purged -
   // see lib/takedown.ts. Never rankable (lib/ranking.ts filters on "active").
   "taken_down",
 ] as const;
@@ -43,7 +43,7 @@ export const SIGNAL_TYPES = [
   "offset_correction",
   "clean_playthrough",
   // Flags that the lyrics *content* is wrong (wrong/missing words, wrong song)
-  // — distinct from offset_correction, which is about timing. Carries `reason`
+  // - distinct from offset_correction, which is about timing. Carries `reason`
   // + optional `note`; counts as a negative in ranking/promotion.
   "content_report",
 ] as const;
@@ -114,7 +114,7 @@ export const signals = sqliteTable(
 );
 
 // External video → track mapping ("yt:<videoId>" keys, see lib/video-key.ts).
-// Lets clients resolve lyrics by the video they are literally watching — an
+// Lets clients resolve lyrics by the video they are literally watching - an
 // exact lookup immune to title parsing. One video points at one track; a
 // track may have many videos (official video, audio upload, re-uploads).
 export const trackVideos = sqliteTable(
@@ -167,7 +167,7 @@ export type SyncJobSource = (typeof SYNC_JOB_SOURCES)[number];
 
 export const SYNC_JOB_STATUSES = [
   // Demand only: people want this song word-synced. Carries no commitment to
-  // any particular way of producing it, and no worker can see it — every
+  // any particular way of producing it, and no worker can see it - every
   // public intake lands here.
   "wanted",
   "pending_approval",
@@ -191,12 +191,12 @@ export const SYNC_JOB_ACTIVE_STATUSES = [
 
 // The word-sync demand queue: songs people want word-timed lyrics for.
 //
-// A row is a *request*, not a work order — it records song identity, the plain
+// A row is a *request*, not a work order - it records song identity, the plain
 // lyrics an aligner would need, and (via syncJobVotes) who asked. Every public
 // intake lands as "wanted"; only an admin promotes one to "queued", which is
 // the only status the pull worker can claim. That split is deliberate: it
 // keeps the public path from ever triggering a fetch, and lets a want be
-// fulfilled any way at all — a local aligner run, the pull worker, or an
+// fulfilled any way at all - a local aligner run, the pull worker, or an
 // upload.
 export const syncJobs = sqliteTable(
   "sync_jobs",
@@ -205,13 +205,13 @@ export const syncJobs = sqliteTable(
     source: text("source", { enum: SYNC_JOB_SOURCES }).notNull(),
     status: text("status", { enum: SYNC_JOB_STATUSES }).notNull(),
     // Dedup identity: normalized "<artist>|<track>" (see lib/song-key.ts).
-    // Not the video key — the same song arrives as a video, a re-upload, a
+    // Not the video key - the same song arrives as a video, a re-upload, a
     // Spotify track, or with no link at all, and those must collapse to one
     // want. Always computed server-side.
     songKey: text("song_key").notNull(),
     // Display source: the best link anyone has offered for this song, re-picked
     // with pickPreferredVideoKey() as new ones arrive (an embeddable yt: beats
-    // sp:). Nullable — a want needs only an artist and a title. Every source
+    // sp:). Nullable - a want needs only an artist and a title. Every source
     // ever supplied is kept per-requester on syncJobVotes.
     videoKey: text("video_key"),
     videoUrl: text("video_url"),
@@ -224,7 +224,7 @@ export const syncJobs = sqliteTable(
     // Unicode-block sniff of the lyrics (lib/lang-detect.ts); null = Latin
     // catalog default. Passed to the aligner as --language.
     language: text("language"),
-    // LRC/word tags already stripped at intake — stored exactly as the
+    // LRC/word tags already stripped at intake - stored exactly as the
     // aligner will read it (see stripToPlainLines).
     plainLyrics: text("plain_lyrics").notNull(),
     // Shared Supabase account id (same project as karafilt.com), whichever
@@ -251,7 +251,7 @@ export const syncJobs = sqliteTable(
   (t) => [
     index("sync_jobs_status_idx").on(t.status, t.createdAt),
     index("sync_jobs_user_idx").on(t.submitterUserId, t.createdAt),
-    // At most one live request per song — the race-safe backstop behind the
+    // At most one live request per song - the race-safe backstop behind the
     // read-then-insert dedup in lib/sync-queue/core.ts. Keyed on song_key, not
     // video_key: video_key is nullable and SQLite treats NULLs as distinct in
     // a unique index, so link-less wants would never dedup.
@@ -264,7 +264,7 @@ export const syncJobs = sqliteTable(
 // One row per person per want. Demand is counted in distinct voters, the same
 // way ranking counts distinct signal fingerprints, so nobody can inflate a
 // song by asking twice. Each vote also keeps the source *that* requester
-// offered — with dedup on song identity, this is the only place the second and
+// offered - with dedup on song identity, this is the only place the second and
 // third link for a song survive, and it's what makes a want traceable back to
 // somewhere the song can actually be heard.
 export const syncJobVotes = sqliteTable(
@@ -291,7 +291,7 @@ export const syncJobVotes = sqliteTable(
 // Discussion on a queue candidate (a sync_jobs row). Same author model as
 // lyric_comments: shared Supabase accounts, display name snapshotted at post
 // time so later renames don't rewrite history. Comments are allowed on any
-// job status — talking about a rejected or finished request is legitimate.
+// job status - talking about a rejected or finished request is legitimate.
 export const syncJobComments = sqliteTable(
   "sync_job_comments",
   {
@@ -337,7 +337,7 @@ export const TAKEDOWN_STATUSES = [
   "received",
   // Content removed. The normal outcome.
   "actioned",
-  // Declined — not a rights complaint, or the claimant could not say what
+  // Declined - not a rights complaint, or the claimant could not say what
   // work they hold. Declining is recorded rather than silent, because the
   // record of *why* is the point of keeping notices at all.
   "declined",
@@ -351,7 +351,7 @@ export type TakedownStatus = (typeof TAKEDOWN_STATUSES)[number];
  * Karalyr serves lyric text, which is a copyrighted work separate from any
  * recording (see the README's legal posture). The defensible position for a
  * site built on user contributions is to host what contributors submit, act
- * promptly when a rightsholder objects, and be able to show both — so every
+ * promptly when a rightsholder objects, and be able to show both - so every
  * notice lands here whether or not it was actioned, and every takedown points
  * back at the notice that caused it.
  *
@@ -372,7 +372,7 @@ export const takedownNotices = sqliteTable(
     claimantRole: text("claimant_role").notNull(),
     /** The work being claimed, in the claimant's own words. */
     workDescription: text("work_description").notNull(),
-    /** What on Karalyr they say infringes it — URLs, track ids, free text. */
+    /** What on Karalyr they say infringes it - URLs, track ids, free text. */
     complainedOf: text("complained_of").notNull(),
     /** Track the notice resolved to, when it resolved to one. */
     trackId: integer("track_id").references(() => tracks.id),
@@ -380,7 +380,7 @@ export const takedownNotices = sqliteTable(
     removedRevisionIds: text("removed_revision_ids").notNull().default("[]"),
     /** Admin's note: what was done, or why it was declined. */
     resolution: text("resolution"),
-    /** Admin account that actioned it — accountability, same as moderation. */
+    /** Admin account that actioned it - accountability, same as moderation. */
     actionedBy: text("actioned_by"),
     actionedAt: integer("actioned_at"),
     createdAt: integer("created_at")
@@ -399,7 +399,7 @@ export const takedownNotices = sqliteTable(
  * block is checked on the publish path rather than left to intent.
  *
  * Keyed on the submitter fingerprint because that is the only identity a
- * revision carries — Karalyr takes contributions without accounts. It is a
+ * revision carries - Karalyr takes contributions without accounts. It is a
  * weak identifier and blocking is therefore easy to evade; that is accepted.
  * The obligation is to act on what you can see, not to be unevadable.
  */

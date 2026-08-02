@@ -24,7 +24,7 @@ const MAX_LOG_LINES = 400;
 
 export interface AlignJobInput {
   youtubeUrl?: string;
-  /** Local file path — dev/testing convenience, not exposed in the UI. */
+  /** Local file path - dev/testing convenience, not exposed in the UI. */
   audioPath?: string;
   lyrics: string;
   artist?: string;
@@ -97,7 +97,7 @@ export function startAlignJob(input: AlignJobInput): AlignJob {
   child.stderr.on("data", (d) => pushLog(String(d)));
 
   const timeout = setTimeout(() => {
-    pushLog("[align] job timed out — killing");
+    pushLog("[align] job timed out - killing");
     child.kill("SIGKILL");
   }, JOB_TIMEOUT_MS);
 
@@ -130,7 +130,7 @@ export function startAlignJob(input: AlignJobInput): AlignJob {
       const duration = input.duration || meta.duration;
       if (!artist || !track || !duration) {
         throw new Error(
-          "Missing track identity (artist/title/duration) — fill the override fields and retry"
+          "Missing track identity (artist/title/duration) - fill the override fields and retry"
         );
       }
 

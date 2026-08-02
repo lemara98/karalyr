@@ -1,6 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr";
 
-// Browser-side Supabase client (public anon key — RLS protects the data).
+// Browser-side Supabase client (public anon key - RLS protects the data).
 // Shares the karafilt.com project, so karafilt accounts work here.
 export function createClient() {
   return createBrowserClient(

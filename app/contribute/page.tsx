@@ -55,15 +55,15 @@ export default async function ContributePage({
           <>
             The current lyrics of{" "}
             <span className="text-[color:var(--color-text)]">
-              {initial.artist} — {initial.title}
+              {initial.artist} - {initial.title}
             </span>{" "}
-            are loaded below. Correct the words or timing and publish — your fix becomes a
+            are loaded below. Correct the words or timing and publish - your fix becomes a
             new correction revision; the original is never overwritten.
           </>
         ) : (
           <>
             Paste a word-synced Enhanced LRC / UltraStar file, or request an AI word-sync
-            from a YouTube link. Every submission becomes a new revision — nothing is
+            from a YouTube link. Every submission becomes a new revision - nothing is
             overwritten.
           </>
         )}

@@ -3,7 +3,7 @@
  *
  * The numeric id stays in the slug on purpose. Artist+title alone are not
  * unique (covers, re-records, two songs that fold to the same ASCII), and a
- * track can be renamed by a metadata fix — an id-suffixed slug keeps every
+ * track can be renamed by a metadata fix - an id-suffixed slug keeps every
  * link stable and lookup a single primary-key read, while still giving search
  * engines and humans the words they care about.
  *
@@ -19,7 +19,7 @@ const MAX_PART = 60;
 
 /**
  * One URL-safe segment: ASCII-folded where folding is lossless (Latin
- * diacritics, Cyrillic), native script kept otherwise — `/track/तुम-ही-हो-123`
+ * diacritics, Cyrillic), native script kept otherwise - `/track/तुम-ही-हो-123`
  * carries the keywords people actually search, where the old [a-z0-9] rule
  * collapsed every non-Latin title to the bare id. Browsers render these
  * natively; the URL is percent-encoded only on the wire. The trailing ASCII
@@ -30,7 +30,7 @@ export function slugifyPart(s: string | null | undefined): string {
     .normalize("NFC")
     .replace(/[^\p{L}\p{M}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "");
-  // Slice by code point — a UTF-16 slice could cut a surrogate pair in half.
+  // Slice by code point - a UTF-16 slice could cut a surrogate pair in half.
   return [...seg].slice(0, MAX_PART).join("").replace(/-+$/, "");
 }
 

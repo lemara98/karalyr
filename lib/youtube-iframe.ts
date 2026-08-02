@@ -2,7 +2,7 @@
 // purpose: we call six player methods, and @types/youtube would install an
 // ambient global YT namespace across the whole repo for that.
 //
-// Client-only — call loadYouTubeIframeApi() from an effect, never on the
+// Client-only - call loadYouTubeIframeApi() from an effect, never on the
 // server. The API script itself always comes from www.youtube.com; the
 // player iframe host (youtube-nocookie.com) is set per-player via `host`.
 
@@ -58,7 +58,7 @@ let apiPromise: Promise<YTNamespace> | null = null;
 
 /**
  * Load the IFrame API once per page; safe to call from multiple mounts
- * (StrictMode included) — every caller shares the same promise.
+ * (StrictMode included) - every caller shares the same promise.
  */
 export function loadYouTubeIframeApi(): Promise<YTNamespace> {
   if (window.YT?.Player) return Promise.resolve(window.YT);

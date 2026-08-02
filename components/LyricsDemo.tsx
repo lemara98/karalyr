@@ -45,7 +45,7 @@ export function LyricsDemo() {
           className="text-[11px] text-[color:var(--color-text-dim)]"
           style={{ fontFamily: "var(--font-mono)" }}
         >
-          Neon Practice — Refactor My Heart
+          Neon Practice - Refactor My Heart
         </span>
       </div>
       <div className="kf-lyrics select-none px-2 py-4" aria-hidden="true">
@@ -114,7 +114,7 @@ function fmtClock(ms: number): string {
 
 /**
  * Decorative tap-timing strip under the hero demo, from the design doc.
- * Runs on the demo's clock: each lyric line above is one "tap" here — the
+ * Runs on the demo's clock: each lyric line above is one "tap" here - the
  * pill presses, a bar lights up, the line counter advances.
  */
 function TapStrip({ now }: { now: number }) {

@@ -168,7 +168,7 @@ export function AnnotatedLyrics({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-start">
-        {/* Reading view — plain text, line-selectable */}
+        {/* Reading view - plain text, line-selectable */}
         <div className="klr-card select-none p-5">
           {payload.lines.map((line, i) => {
             const count = countByLine[i];

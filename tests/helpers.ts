@@ -124,7 +124,7 @@ export async function makeSignal(
 
 let jobSeq = 0;
 
-/** A queue request. Unique songKey per call — the partial unique index allows
+/** A queue request. Unique songKey per call - the partial unique index allows
  *  only one live request per song. */
 export async function makeSyncJob(db: Db, overrides: Partial<typeof syncJobs.$inferInsert> = {}) {
   const n = ++jobSeq;

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 // Karalyr shares its Supabase project (and therefore its user accounts) with
-// the karafilt.com website — same NEXT_PUBLIC_SUPABASE_* values. Comments and
+// the karafilt.com website - same NEXT_PUBLIC_SUPABASE_* values. Comments and
 // all other Karalyr data stay in the local SQLite DB; Supabase is only the
 // identity provider here.
 
@@ -35,7 +35,7 @@ export async function createClient() {
             );
           } catch {
             // Called from a Server Component, where cookies can't be written.
-            // Safe to ignore — middleware.ts refreshes the session instead.
+            // Safe to ignore - middleware.ts refreshes the session instead.
           }
         },
       },

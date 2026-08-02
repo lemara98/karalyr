@@ -29,7 +29,7 @@ function fmtDate(ms: number): string {
 
 /**
  * Discussion under a queue candidate: flat, oldest first. Same posture as
- * lyric comments — public to read, a shared karafilt.com account plus a
+ * lyric comments - public to read, a shared karafilt.com account plus a
  * proof-of-work to write.
  */
 export function QueueComments({ jobId }: { jobId: number }) {
@@ -120,7 +120,7 @@ export function QueueComments({ jobId }: { jobId: number }) {
       )}
       {comments && comments.length === 0 && (
         <p className="mb-4 text-sm text-[color:var(--color-text-dim)]">
-          No comments yet — say why this song matters.
+          No comments yet - say why this song matters.
         </p>
       )}
 

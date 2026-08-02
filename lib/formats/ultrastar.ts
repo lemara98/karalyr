@@ -14,7 +14,7 @@ type Singer = "P1" | "P2" | "BOTH";
  *   ms = GAP + beat * (60000 / (BPM * 4)) = GAP + beat * 15000 / BPM
  *
  * Note lines look like `: 0 4 12 Hel` (`:` normal, `*` golden, `F` freestyle,
- * `R` rap, `G` rap-golden — all sung syllables for our purposes). `- <beat>`
+ * `R` rap, `G` rap-golden - all sung syllables for our purposes). `- <beat>`
  * ends a line. `P1`/`P2`/`P3` switch the active singer (P3 = both, per the
  * classic duet convention). Adjacent syllables merge into one word unless the
  * next syllable's text starts with a space (UltraStar encodes word breaks as
@@ -121,7 +121,7 @@ export function parseUltraStar(input: string): LyricsPayload {
         prev.end_ms = end;
       }
     }
-    // A single syllable is just the word's own span — drop the redundancy.
+    // A single syllable is just the word's own span - drop the redundancy.
     for (const w of words) {
       if (w.syllables && w.syllables.length < 2) delete w.syllables;
     }

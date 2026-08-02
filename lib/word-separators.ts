@@ -8,7 +8,7 @@ import type { Line } from "./formats/types";
  *
  * Words are located sequentially in `line.text`; when they don't tile (edited
  * text drifted from the word list) every separator falls back to a single
- * space — exactly the old rendering.
+ * space - exactly the old rendering.
  */
 export function wordSeparators(line: Line): string[] {
   const words = line.words;

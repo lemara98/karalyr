@@ -1,5 +1,5 @@
 // The base URL shown in the curl examples. Hardcoding localhost meant the
-// public docs told every reader to call their own machine — so take the
+// public docs told every reader to call their own machine - so take the
 // deployed origin, falling back to localhost for `npm run dev`.
 const BASE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -68,14 +68,14 @@ export default function DocsPage() {
           Best lyrics for an exact track match. Params: <code>artist_name</code>,{" "}
           <code>track_name</code> (required), <code>album_name</code>,{" "}
           <code>duration</code> (seconds, matched ±2s). Karalyr serves
-          word-synced karaoke lyrics only; on a miss it returns 404 — clients
+          word-synced karaoke lyrics only; on a miss it returns 404 - clients
           handle their own fallbacks (e.g. LRCLIB) and can request a sync via
           the wanted queue.
         </p>
         <Code>{`curl "${BASE}/api/get?artist_name=Neon%20Practice&track_name=Refactor%20My%20Heart&duration=212"`}</Code>
         <p>
           Response: LRCLIB fields (<code>plainLyrics</code>,{" "}
-          <code>syncedLyrics</code> — Enhanced LRC when word timing exists) plus{" "}
+          <code>syncedLyrics</code> - Enhanced LRC when word timing exists) plus{" "}
           <code>karalyr: {"{ payload, tier, source, revision_id, has_word_timing }"}</code>.
         </p>
       </Endpoint>
@@ -111,7 +111,7 @@ export default function DocsPage() {
           text with <code>format</code> (<code>lrc</code>,{" "}
           <code>enhanced_lrc</code>, <code>ultrastar</code>), plus the solved
           challenge. Word timing is required: line-level LRC is rejected with{" "}
-          <code>WordTimingRequired</code> — request a sync in the wanted queue
+          <code>WordTimingRequired</code> - request a sync in the wanted queue
           instead. If the track&apos;s current best revision is verified, the
           submission enters <code>pending_review</code>.
         </p>

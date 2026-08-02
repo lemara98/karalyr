@@ -15,7 +15,7 @@ export function HeaderAuthMenu({ user }: { user: HeaderUser }) {
   const pathname = usePathname();
 
   if (!user) {
-    // Send the visitor back where they were after signing in — but never
+    // Send the visitor back where they were after signing in - but never
     // emit a self-referential next=/login. Hidden below `sm`: the mobile
     // burger menu carries its own Sign in entry.
     const href =

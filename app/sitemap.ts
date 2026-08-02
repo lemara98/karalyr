@@ -11,7 +11,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://karalyr.com";
 export const revalidate = 3600;
 
 // Public, indexable pages. Auth-gated routes (/admin, /login) and the
-// api/auth handlers are intentionally excluded — see robots.ts.
+// api/auth handlers are intentionally excluded - see robots.ts.
 const ROUTES: Array<{
   path: string;
   changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];
@@ -24,7 +24,7 @@ const ROUTES: Array<{
   { path: "/queue", changeFrequency: "weekly", priority: 0.6 },
   { path: "/sponsors", changeFrequency: "monthly", priority: 0.5 },
   { path: "/contributors", changeFrequency: "weekly", priority: 0.5 },
-  // Indexed on purpose — a rightsholder searching for how to reach us should
+  // Indexed on purpose - a rightsholder searching for how to reach us should
   // find this rather than giving up and writing to the host.
   { path: "/takedown", changeFrequency: "yearly", priority: 0.4 },
 ];
@@ -40,7 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
   );
 
-  // Every track with published lyrics — the pages people actually search
+  // Every track with published lyrics - the pages people actually search
   // for. Tracks without a best revision are thin shells; skip them. If the
   // database is unreachable (e.g. a build without env), the static pages
   // still ship rather than failing the whole sitemap.

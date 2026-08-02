@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   const { isAdmin, email } = await adminStatus();
 
-  // Nobody signed in and no legacy token cookie — send them to the shared
+  // Nobody signed in and no legacy token cookie - send them to the shared
   // Karafilt login and come back here.
   if (!isAdmin && !email) redirect("/login?next=/admin");
 

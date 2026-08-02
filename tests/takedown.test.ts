@@ -55,7 +55,7 @@ describe("actionTakedown", () => {
     expect(result.removed).toEqual([rev.id]);
     const [after] = await db.select().from(revisions).where(eq(revisions.id, rev.id));
     expect(after.status).toBe("taken_down");
-    // The words are gone, not flagged — that is the whole point.
+    // The words are gone, not flagged - that is the whole point.
     expect(after.payload).toBe(TOMBSTONE_PAYLOAD);
     expect(after.payload).not.toContain("Test line one");
   });
@@ -122,7 +122,7 @@ describe("actionTakedown", () => {
     expect(updated.trackId).toBe(track.id);
   });
 
-  it("is idempotent — re-running skips what is already purged", async () => {
+  it("is idempotent - re-running skips what is already purged", async () => {
     const db = await makeDb();
     const track = await makeTrack(db);
     const rev = await makeRevision(db, track.id);

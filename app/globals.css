@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Karalyr brand tokens — from the Karalyr design doc (Karafilt family).
+   Karalyr brand tokens - from the Karalyr design doc (Karafilt family).
    Accent pairing "Violet → Pink": klr-a #b46cff, klr-b #ff6b9d, hi #ff8fb3.
 --------------------------------------------------------------------------- */
 :root {
@@ -290,7 +290,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ---------------------------------------------------------------------------
-   Karaoke lyrics (player + hero demo) — ported from the Karafilt family
+   Karaoke lyrics (player + hero demo) - ported from the Karafilt family
    design system (.kf-lyrics), highlight remapped to the Karalyr pink.
 --------------------------------------------------------------------------- */
 .kf-lyrics {
@@ -348,7 +348,7 @@ input[type="range"]::-moz-range-thumb {
    during silences > 5s the lyrics dim and a centered overlay shows a filling
    bar plus the seconds left until the next line. Overlay + lyric opacity are
    clock-driven inline per frame (fade-in on entry, ease-out 2s→1s before the
-   verse) — no CSS transitions here, they'd fight the per-frame updates. */
+   verse) - no CSS transitions here, they'd fight the per-frame updates. */
 .kf-lyrics .klr-countin {
   position: absolute;
   left: 0;
@@ -381,7 +381,7 @@ input[type="range"]::-moz-range-thumb {
   background: linear-gradient(90deg, var(--klr-a), var(--klr-b));
   box-shadow: 0 0 22px rgba(255, 107, 157, 0.55);
   /* No width transition: the clock updates every frame, and a transition
-     here retargets mid-flight each frame — that reads as stutter. */
+     here retargets mid-flight each frame - that reads as stutter. */
 }
 .kf-lyrics .klr-countin-num {
   font-family: var(--font-display);
@@ -460,7 +460,7 @@ input[type="range"]::-moz-range-thumb {
   color: rgba(255, 255, 255, 0.3);
   text-shadow: none;
 }
-/* Sung words hold the highlight — no pink→white flash after the sweep. */
+/* Sung words hold the highlight - no pink→white flash after the sweep. */
 .kf-lyrics .line.active .word.sung {
   color: var(--lyrics-highlight);
   text-shadow: 0 0 10px color-mix(in srgb, var(--lyrics-highlight) 55%, transparent);
@@ -469,7 +469,7 @@ input[type="range"]::-moz-range-thumb {
    left→right with a white-hot feathered leading edge at --word-progress
    (set inline per frame by LyricsView), clipped to the glyphs. The white
    text-shadow deliberately bleeds through the semi-transparent unfilled
-   part — that's the lit-from-behind look from the design. */
+   part - that's the lit-from-behind look from the design. */
 .kf-lyrics .line.active .word.singing {
   background: linear-gradient(
     90deg,

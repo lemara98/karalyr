@@ -19,12 +19,12 @@ import { parseVideoKey, pickPreferredVideoKey } from "./video-key";
  * One-off cleanup for the retired LRCLIB lazy-import era: Karalyr is
  * word/syllable-synced only, so every `lrclib_import` revision (line-level)
  * gets deleted. Per the owner's call, a track is converted into a wanted-queue
- * request ONLY when a video URL is linked to it — the queue UI and the
+ * request ONLY when a video URL is linked to it - the queue UI and the
  * alignment operator need a source to work from; without one the track is
  * deleted outright and comes back the day someone requests it properly.
  *
  * Dry-run limitation: without writing, the enqueue dedupe verdict (new job vs
- * vote vs AlreadySynced) can't be known — the action log says "would enqueue"
+ * vote vs AlreadySynced) can't be known - the action log says "would enqueue"
  * and the apply run reports what actually happened.
  *
  * Idempotent: a second run finds zero `lrclib_import` rows.
@@ -73,7 +73,7 @@ export async function cleanupLrclibImports(
   };
   const log = (msg: string) => summary.actions.push(msg);
 
-  // The line_observations drop migration may or may not have run yet — the
+  // The line_observations drop migration may or may not have run yet - the
   // script works either way.
   const obsTable = await db.all<{ name: string }>(
     sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'line_observations'`
@@ -105,7 +105,7 @@ export async function cleanupLrclibImports(
       .where(eq(revisions.trackId, trackId))) as Revision[];
     const lrclibIds = new Set(lrclibRevs.map((r) => r.id));
     const survivors = allRevs.filter((r) => !lrclibIds.has(r.id));
-    const label = `"${track.artistName} — ${track.trackName}" (track ${trackId})`;
+    const label = `"${track.artistName} - ${track.trackName}" (track ${trackId})`;
 
     // Conversion first, while track_videos still exists. Owner's rule: only
     // songs with a linked video become wanted-queue requests.
@@ -141,19 +141,19 @@ export async function cleanupLrclibImports(
         if (res.ok) {
           if (res.voted) {
             summary.votesRecorded++;
-            log(`${label}: live request already exists — recorded a vote (job ${res.job.id})`);
+            log(`${label}: live request already exists - recorded a vote (job ${res.job.id})`);
           } else {
             summary.jobsCreated++;
             log(`${label}: wanted request created (job ${res.job.id}, ${videoUrl})`);
           }
         } else if (res.code === "AlreadySynced") {
           summary.alreadySynced++;
-          log(`${label}: already word-synced elsewhere — no request needed`);
+          log(`${label}: already word-synced elsewhere - no request needed`);
         } else if (res.code === "BadLyrics") {
           summary.badLyrics++;
-          log(`${label}: lyrics too short for the queue — deleting without a request`);
+          log(`${label}: lyrics too short for the queue - deleting without a request`);
         } else {
-          log(`${label}: enqueue rejected (${res.code}) — deleting without a request`);
+          log(`${label}: enqueue rejected (${res.code}) - deleting without a request`);
         }
       }
     }

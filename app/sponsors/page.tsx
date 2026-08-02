@@ -3,7 +3,7 @@ import { SponsorsGrid } from "@/components/SponsorsGrid";
 import { getSponsors } from "@/lib/github";
 
 export const metadata: Metadata = {
-  title: "Sponsors — Karalyr",
+  title: "Sponsors - Karalyr",
   description:
     "Karalyr is a solo open-source project. Support the maintainer via GitHub Sponsors, Ko-fi, or PayPal.",
 };
@@ -97,7 +97,7 @@ export default async function SponsorsPage() {
               >
                 ko-fi.com/milanknezevic
               </a>{" "}
-              — one-off tips by card or PayPal, no account needed, and Ko-fi
+              - one-off tips by card or PayPal, no account needed, and Ko-fi
               takes 0% of tips.
             </p>
           </div>
@@ -127,7 +127,7 @@ export default async function SponsorsPage() {
               >
                 Betania.io
               </a>
-              , the maintainer&rsquo;s company — need an invoice for your
+              , the maintainer&rsquo;s company - need an invoice for your
               company or venue? Email{" "}
               <a className={LINK_CLS} href="mailto:milan.knezevic@betania.io">
                 milan.knezevic@betania.io

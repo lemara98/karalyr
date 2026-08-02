@@ -11,7 +11,7 @@ import {
 /**
  * "Report lyrics" control for the signal bar: flags that the lyrics *content*
  * is wrong (distinct from the timing-offset report). Opens a modal to collect
- * a reason + optional note and posts a content_report to /api/signal — the
+ * a reason + optional note and posts a content_report to /api/signal - the
  * same route and quality loop the other signals use.
  */
 export function ReportLyricsDialog({ revisionId }: { revisionId: number }) {

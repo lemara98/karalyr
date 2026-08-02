@@ -15,7 +15,7 @@ import { type NavLink } from "@/components/MobileMenu";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
-  // "vietnamese" ships in Space Grotesk itself — without it Vietnamese lyrics
+  // "vietnamese" ships in Space Grotesk itself - without it Vietnamese lyrics
   // fell through to the system font mid-word.
   subsets: ["latin", "latin-ext", "vietnamese"],
   variable: "--font-space-grotesk",
@@ -43,7 +43,7 @@ const notoTC = Noto_Sans_TC({
 });
 
 export const metadata: Metadata = {
-  title: "Karalyr — every word, right on time",
+  title: "Karalyr - every word, right on time",
   description:
     "The open karaoke lyrics database: word-level timed lyrics, community corrections, and a free open lyrics API. A Karafilt sibling.",
 };
@@ -175,7 +175,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <div className="border-t border-white/5 px-6 py-4">
             <p className="mx-auto max-w-6xl text-xs text-[color:var(--color-text-dim)]">
-              © 2026 Karalyr. A Karafilt sibling — developed by the community, operated by{" "}
+              © 2026 Karalyr. A Karafilt sibling - developed by the community, operated by{" "}
               <a
                 href="https://betania.io"
                 target="_blank"

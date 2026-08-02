@@ -15,7 +15,7 @@ the audio. That path is gone from `queue_worker.py`, so promoting a song in
 `/admin` can never cause a download. This replaces it: the audio comes from
 playback *you* started, and only the timings are ever kept.
 
-Everything downstream is unchanged — same Demucs, same MMS forced alignment,
+Everything downstream is unchanged - same Demucs, same MMS forced alignment,
 same `auto_aligned` revision.
 
 ## What happens on one run
@@ -31,7 +31,7 @@ you click "Align next song"
   → auto_aligned revision created, the request closes itself
 ```
 
-Recording runs at **1× real time** — a 3-minute song takes 3 minutes to
+Recording runs at **1× real time** - a 3-minute song takes 3 minutes to
 capture, plus a few minutes for Demucs. That is a feature, not a limit to
 engineer around.
 
@@ -74,7 +74,7 @@ your real host and use a long random token.
 ### 4. Register the native host
 
 Chrome only starts a host that is named in its own config directory *and*
-whitelists the exact extension ID — which is why this can't be pre-filled:
+whitelists the exact extension ID - which is why this can't be pre-filled:
 
 ```bash
 worker/install-capture-host.sh <extension-id>
@@ -86,7 +86,7 @@ Then **restart the browser** so it reads the manifest.
 
 ## Using it
 
-1. Someone requests a song (or you do, in the Studio) — it appears on `/queue`
+1. Someone requests a song (or you do, in the Studio) - it appears on `/queue`
 2. In `/admin` → **Wanted songs**, click **Promote to queue** on a song you have
    a lawful way to hear
 3. Click the extension icon → **Claim next song**. It takes the job and opens
@@ -100,7 +100,7 @@ Then **restart the browser** so it reads the manifest.
 
 The two clicks are not an oversight. `tabCapture` only grants a stream for a
 tab the extension was **invoked on by a user gesture**, so a tab the worker
-opens by itself cannot be captured — Chrome answers "Extension has not been
+opens by itself cannot be captured - Chrome answers "Extension has not been
 invoked for the current page". The second click supplies that gesture, which is
 why it has to happen in the popup and on the song's own tab.
 
@@ -110,7 +110,7 @@ exactly the automated-extraction pattern the design is avoiding.
 
 ## If you already own the file
 
-Skip the extension entirely — this is the simplest path and needs no setup
+Skip the extension entirely - this is the simplest path and needs no setup
 beyond the venv:
 
 ```bash
@@ -126,14 +126,14 @@ Or bypass the queue completely with `align.py --audio` plus
 
 | Symptom | Cause |
 |---|---|
-| "Native host disconnected" immediately | Manifest missing or wrong extension ID — rerun the install script and restart the browser |
+| "Native host disconnected" immediately | Manifest missing or wrong extension ID - rerun the install script and restart the browser |
 | "KARALYR_URL/WORKER_TOKEN missing" | `~/.config/karalyr-worker.env` absent or unreadable |
 | Karalyr rejected WORKER_TOKEN (401) | Token doesn't match the server's `WORKER_TOKEN` |
-| "Nothing queued" | Nothing is in `queued` — promote something in `/admin` first |
+| "Nothing queued" | Nothing is in `queued` - promote something in `/admin` first |
 | Recording is silent | The tab was muted, or another extension grabbed the capture first |
 | Aligner reports a word-count mismatch | Characters the aligner can't romanize; check the request's lyrics |
 
-Host-side detail goes to stderr, which Chrome collects — start the browser from
+Host-side detail goes to stderr, which Chrome collects - start the browser from
 a terminal to watch it:
 
 ```bash
@@ -146,7 +146,7 @@ The pieces verified so far: the native messaging framing, config loading, an
 authenticated claim against a running Karalyr returning a real job with its
 lyrics, and `abandon` releasing the job back to `queued`.
 
-**Not yet exercised end to end**: the browser half — `tabCapture`, the
+**Not yet exercised end to end**: the browser half - `tabCapture`, the
 offscreen recorder, playback detection, and a full alignment of captured audio.
 That needs a real browser session with the models installed, so expect to shake
 out rough edges on the first song. The most likely spots are player quirks in

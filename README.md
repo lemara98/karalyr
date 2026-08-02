@@ -1,7 +1,7 @@
 # Karalyr
 
 An open-source, LRCLIB-style lyrics database purpose-built for **karaoke**.
-Karalyr stores **word/syllable-synced lyrics only** — every song in the
+Karalyr stores **word/syllable-synced lyrics only** - every song in the
 library went through an alignment process (AI aligner, word-tagged upload, or
 a correction of either). Community corrections and an open JSON API on top.
 Karalyr is the data backbone for [Karafilt](https://karafilt.com) (real-time
@@ -9,7 +9,7 @@ vocal removal + synced lyrics in the browser). Non-commercial, MIT-licensed.
 
 Why not just LRCLIB? LRCLIB is line-level and has no correction loop. Karaoke
 needs word-level highlighting, duet parts, and a way for singers to fix
-timing — without accounts. Karalyr adds all of that while staying
+timing - without accounts. Karalyr adds all of that while staying
 API-compatible: an LRCLIB client works by swapping the base URL. Songs
 Karalyr doesn't have yet live in the **wanted queue** until someone aligns
 them; clients keep their own fallbacks (e.g. LRCLIB itself) in the meantime.
@@ -43,15 +43,15 @@ Base URL: `http://localhost:3000`. Full docs with curl examples at `/docs`.
 
 Responses are LRCLIB-shaped (`plainLyrics`, `syncedLyrics`) plus a `karalyr`
 object: `{ payload, tier, source, revision_id, has_word_timing }`. `payload`
-is the native format — lines with `start_ms`/`end_ms`/`singer` and optional
+is the native format - lines with `start_ms`/`end_ms`/`singer` and optional
 per-word timing.
 
 ## Architecture notes
 
 ### Revisions, not edits
 
-Lyrics are **immutable revisions**. Every submission — import, user upload,
-correction — is a new row; nothing is overwritten and history is public.
+Lyrics are **immutable revisions**. Every submission - import, user upload,
+correction - is a new row; nothing is overwritten and history is public.
 Each revision has:
 
 - a **source**: `auto_aligned`, `user_submission`, `ultrastar_import`,
@@ -62,7 +62,7 @@ Each revision has:
 The API serves the *best* active revision per track: highest tier first, then
 most net-positive signals (deduped per fingerprint), then newest. The winner
 is materialized in `tracks.best_revision_id` and recomputed on every write
-that could change it (new revision, new signal, moderation) — reads stay a
+that could change it (new revision, new signal, moderation) - reads stay a
 simple indexed lookup, which matters because `/api/get` is the hot path.
 
 ### Signals and promotion
@@ -77,7 +77,7 @@ Anonymous feedback (`signals`) drives quality:
   offset** applied to every timestamp.
 - Edits targeting a track whose best revision is `verified` enter
   `pending_review` and only go live via the moderation queue at `/admin`
-  (gated by a signed-in admin account — `ADMIN_EMAILS` or `app_admins`).
+  (gated by a signed-in admin account - `ADMIN_EMAILS` or `app_admins`).
 
 ### Abuse control without accounts
 
@@ -86,7 +86,7 @@ Anonymous feedback (`signals`) drives quality:
   `POW_DIFFICULTY`). Challenges are HMAC-signed (stateless), expire in 10
   minutes, and are single-use.
 - Per-fingerprint **rate limits** on publish/signal. A fingerprint is
-  `sha256(ip | user-agent | salt)` — raw IPs are never stored.
+  `sha256(ip | user-agent | salt)` - raw IPs are never stored.
 - In dev only, the `X-Karalyr-Debug-Fp` header overrides the fingerprint so
   you can exercise the promotion rules from one machine.
 
@@ -95,7 +95,7 @@ Anonymous feedback (`signals`) drives quality:
 One piece is deliberately behind an interface with an in-process
 implementation, so it can be upgraded without touching route handlers:
 
-- `lib/stores/kv.ts` — rate-limit counters + PoW replay guard (swap the
+- `lib/stores/kv.ts` - rate-limit counters + PoW replay guard (swap the
   in-memory store for Redis/Turso when running multiple instances)
 
 ### Lyrics payload
@@ -117,7 +117,7 @@ implementation, so it can be upgraded without touching route handlers:
 }
 ```
 
-`words` is required in practice — only payloads with
+`words` is required in practice - only payloads with
 `has_word_timing: true` are accepted and served.
 `singer` is `"P1" | "P2" | "BOTH" | null` for duets. Converters in
 `lib/formats/` import plain LRC, Enhanced LRC (`<mm:ss.xx>` word tags), and
@@ -128,33 +128,33 @@ round-trip tests.
 ## Deployment
 
 The app is a single standard Next.js project with zero Vercel-proprietary
-APIs — route handlers, libSQL, and nothing else.
+APIs - route handlers, libSQL, and nothing else.
 
 Full walkthrough in [DEPLOY.md](DEPLOY.md).
 
 - **Now (Vercel + Turso):** create a Turso database, run the migrations
   against it, set `DATABASE_URL` (libsql://…) + `DATABASE_AUTH_TOKEN` +
   the secrets from `.env.example`, deploy. Safe on multiple instances since
-  migration 0008 — rate limits and the PoW replay guard share state through
+  migration 0008 - rate limits and the PoW replay guard share state through
   `kv_entries` rather than process memory.
 - **Later (VPS):** `npm run build && npm start` behind any reverse proxy;
   `DATABASE_URL` can stay Turso or go back to a local file.
 - **Important:** serve the API from a **custom domain you own** (e.g.
-  `api.karalyr.com`) from day one — never hand out the `*.vercel.app` URL.
+  `api.karalyr.com`) from day one - never hand out the `*.vercel.app` URL.
   Moving off Vercel is then only a DNS change and no client ever breaks.
 
 ## Legal posture
 
-This section records the reasoning the code already enforces, and — just as
-plainly — the part that is not settled. **None of it is legal advice.**
+This section records the reasoning the code already enforces, and - just as
+plainly - the part that is not settled. **None of it is legal advice.**
 Copyright and platform terms vary by jurisdiction, and running a public
 service is a different risk profile from personal use.
 
 ### What the pipeline keeps
 
 Alignment runs on your machine. Demucs separates the vocal stem, MMS aligns it
-to the lyric lines, and the run's temp directory — audio, separated stems,
-transcript — is deleted when the process exits (`worker/align.py`). What leaves
+to the lyric lines, and the run's temp directory - audio, separated stems,
+transcript - is deleted when the process exits (`worker/align.py`). What leaves
 the machine is a payload of timestamps. This project stores, serves, and
 transmits no audio.
 
@@ -162,13 +162,13 @@ Timings are the most defensible artifact here: measurements *about* a recording
 rather than the recording. That is why the design keeps them and discards
 everything else.
 
-### Audio sources — the operator's rule
+### Audio sources - the operator's rule
 
 **Align only from audio you have a lawful way to hold**: purchased downloads,
 CD rips, your own recordings, openly licensed material.
 
 Promotion into `queued` is admin-only for exactly this reason
-(`lib/sync-queue/core.ts`) — a person decides, per song, that they have a
+(`lib/sync-queue/core.ts`) - a person decides, per song, that they have a
 lawful source. `queue_worker.py` deliberately cannot fetch audio, and
 `align.py --youtube` survives only as a local testing flag because downloading
 from YouTube violates YouTube's Terms of Service. Never wire it into a hosted
@@ -176,13 +176,13 @@ flow.
 
 Capturing a stream is not "audio you possess". The capture extension reduces
 the copying involved; it does not license the copy. It exists so alignment
-needs no download — not to launder the source.
+needs no download - not to launder the source.
 
 Automating acquisition breaks this twice over: YouTube's terms separately
 prohibit automated access, and unattended extraction at scale is the pattern
 that attracts enforcement. **Automate the aligning, never the acquiring.**
 
-### Lyrics — the unresolved part
+### Lyrics - the unresolved part
 
 Karalyr stores and serves lyric text, and lyric text is a copyrighted work
 separate from the recording. This is the project's real exposure, and it is
@@ -198,7 +198,7 @@ Two points worth stating without hedging:
   music engages a synchronisation/reprint right held by music publishers. In
   the US, *Leadsinger v. BMG Music Publishing* (9th Cir. 2008) held that the
   compulsory mechanical licence does not reach on-screen karaoke lyrics. The
-  EU offers no compulsory route either — reproduction and communication to the
+  EU offers no compulsory route either - reproduction and communication to the
   public clear through the publisher, not through a PRO.
 
 "Credit the author and distribute freely" is therefore not a lawful basis,
@@ -208,19 +208,19 @@ however fair it feels.
 
 Accepted without further clearance:
 
-- **Public domain** — author died 70+ years ago (term is jurisdiction-specific).
+- **Public domain** - author died 70+ years ago (term is jurisdiction-specific).
   Traditional and folk material with no identifiable author is often genuinely
   here; *arrangements* of it usually are not.
-- **Openly licensed** — CC-BY, CC-BY-SA and similar, where the licence covers
+- **Openly licensed** - CC-BY, CC-BY-SA and similar, where the licence covers
   reproduction. Record which licence, with the revision.
-- **Rightsholder-submitted** — an artist or publisher uploading their own work
+- **Rightsholder-submitted** - an artist or publisher uploading their own work
   and granting distribution.
 
 Not accepted on attribution alone: commercial catalogue lyrics, however
 carefully credited.
 
 To carry commercial repertoire there are two honest routes. License it through
-an aggregator (LyricFind, Musixmatch) — real, paid, and generally expecting a
+an aggregator (LyricFind, Musixmatch) - real, paid, and generally expecting a
 legal entity to contract with. Or restructure so Karalyr distributes *timing
 data keyed to a recording* while the client supplies its own lyrics, which
 narrows the exposure without eliminating it.
@@ -232,5 +232,5 @@ you align, and what you serve, is yours to answer for.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Seed data contains only original placeholder
+MIT - see [LICENSE](LICENSE). Seed data contains only original placeholder
 verses; real lyrics arrive via user contributions.

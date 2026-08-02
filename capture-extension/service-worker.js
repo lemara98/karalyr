@@ -45,7 +45,7 @@ function connectHost() {
       return setPhase("idle");
     }
     if (msg.type === "done") {
-      pushLog(`Done — revision #${msg.revision_id} on track #${msg.track_id} (${msg.revision_status})`);
+      pushLog(`Done - revision #${msg.revision_id} on track #${msg.track_id} (${msg.revision_status})`);
       return setPhase("idle", { job: null, tabId: null });
     }
     if (msg.type === "error") {
@@ -75,7 +75,7 @@ function claimNext() {
 }
 
 async function onJobClaimed(job) {
-  pushLog(`Job #${job.id}: ${job.artist_name} — ${job.track_name}`);
+  pushLog(`Job #${job.id}: ${job.artist_name} - ${job.track_name}`);
 
   if (!job.video_url) {
     pushLog("This request has no link, so there is nothing to play. Releasing it.");
@@ -105,7 +105,7 @@ async function beginCapture(streamId, tabId) {
     if (!started?.ok) throw new Error(started?.error || "could not start capture");
 
     connectHost().postMessage({ type: "audio_start", job_id: state.job.id, mime: "audio/webm" });
-    pushLog("Recording. Leave the tab playing — it runs at normal speed.");
+    pushLog("Recording. Leave the tab playing - it runs at normal speed.");
 
     // Restart from 0 and tell us when it ends, so we get the whole song and
     // not just what was left of an autoplay already in progress.
@@ -154,7 +154,7 @@ async function finishCapture(reason) {
   connectHost().postMessage({ type: "audio_end" });
 
   setPhase("aligning");
-  pushLog("Audio sent. Aligning — this is the slow part.");
+  pushLog("Audio sent. Aligning - this is the slow part.");
 }
 
 async function ensureOffscreen() {

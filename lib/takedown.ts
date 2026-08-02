@@ -2,7 +2,7 @@
  * Rights complaints: recording them, and removing what they point at.
  *
  * Karalyr hosts lyric text submitted by contributors, and lyric text is a
- * copyrighted work in its own right — separate from any recording, and not
+ * copyrighted work in its own right - separate from any recording, and not
  * covered by crediting the writer (see the README's legal posture). The
  * position that holds for a contribution-driven site is to act on notice and
  * be able to show that you did, so:
@@ -28,17 +28,17 @@ import {
 import { computeBestRevision } from "./ranking";
 
 /**
- * Where notices reach a human. Single source of truth — it appears on the
+ * Where notices reach a human. Single source of truth - it appears on the
  * public page and in the API errors that tell someone to write in.
  *
  * A role alias (takedown@karalyr.com) would be better practice than a
  * personal address: it survives staff changes and can be forwarded. This uses
  * the address already published on /sponsors because a contact that bounces
- * is far worse than one that is merely personal — swap it here once the alias
+ * is far worse than one that is merely personal - swap it here once the alias
  * exists, and nothing else needs touching.
  *
  * Publishing this at all is the point. Karalyr deploys on Vercel, and a
- * rightsholder who cannot find the operator complains to the host instead —
+ * rightsholder who cannot find the operator complains to the host instead -
  * which takes the whole deployment down rather than one revision.
  */
 export const TAKEDOWN_EMAIL = "milan.knezevic@betania.io";
@@ -94,7 +94,7 @@ export async function recordNotice(
  * Remove the named revisions and close the notice.
  *
  * Irreversible: the lyric payloads are overwritten, not flagged. Returns the
- * revisions actually purged — ids that don't exist, or were already taken
+ * revisions actually purged - ids that don't exist, or were already taken
  * down, are skipped rather than failing the whole action, so a re-run after a
  * partial failure finishes the job instead of refusing.
  */
@@ -125,7 +125,7 @@ export async function actionTakedown(
       .where(inArray(revisions.id, removable.map((r) => r.id)));
   }
 
-  // Every affected track needs its winner re-picked — the removed revision
+  // Every affected track needs its winner re-picked - the removed revision
   // may well have been it, and `tracks.best_revision_id` is what reads hit.
   const trackIds = [...new Set(targets.map((r) => r.trackId))];
   for (const trackId of trackIds) await computeBestRevision(db, trackId);

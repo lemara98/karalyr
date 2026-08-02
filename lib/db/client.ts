@@ -17,7 +17,7 @@ export function getDb(): Db {
     if (process.env.NODE_ENV === "production" && url.startsWith("file:")) {
       throw new Error(
         "DATABASE_URL is not set for this deployment. Production needs a libsql:// URL " +
-          "plus DATABASE_AUTH_TOKEN — a local SQLite file cannot work on a serverless host. " +
+          "plus DATABASE_AUTH_TOKEN - a local SQLite file cannot work on a serverless host. " +
           "Check the variable is enabled for this environment (Production vs Preview) and redeploy."
       );
     }

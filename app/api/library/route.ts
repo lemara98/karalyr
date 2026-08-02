@@ -5,7 +5,7 @@ import { apiError, corsOptions, json } from "@/lib/api-helpers";
 export const dynamic = "force-dynamic";
 
 /**
- * /api/library?cursor=<track id>&limit=N — one page of the library browser.
+ * /api/library?cursor=<track id>&limit=N - one page of the library browser.
  * `cursor` is the `nextCursor` of the previous page; omit it for the first.
  */
 export async function GET(req: Request) {

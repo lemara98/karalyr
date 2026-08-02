@@ -1,7 +1,7 @@
 /**
  * Standalone Spotify player card. Spotify's embed only reliably plays
  * previews (full tracks need a logged-in premium session inside the iframe),
- * so it is never wired into the lyric clock — see YouTubeLyricsPlayer for
+ * so it is never wired into the lyric clock - see YouTubeLyricsPlayer for
  * the synced path.
  */
 export function SpotifyEmbed({ spotifyTrackId }: { spotifyTrackId: string }) {
@@ -20,7 +20,7 @@ export function SpotifyEmbed({ spotifyTrackId }: { spotifyTrackId: string }) {
         />
       </div>
       <p className="text-xs text-[color:var(--color-text-dim)]">
-        Spotify preview — not synced to the lyrics below.
+        Spotify preview - not synced to the lyrics below.
       </p>
     </div>
   );

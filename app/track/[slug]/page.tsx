@@ -34,7 +34,7 @@ function decodeSlug(raw: string): string {
 /**
  * Track pages are the site's search-traffic surface, and for non-English
  * songs the native-script title IS the query people type. Deliberately no
- * lyric text in the description — quoting lyrics in metadata is a rights
+ * lyric text in the description - quoting lyrics in metadata is a rights
  * redistribution surface the pages themselves avoid.
  */
 export async function generateMetadata({
@@ -51,7 +51,7 @@ export async function generateMetadata({
   const title = `${track.trackName} – ${track.artistName} | word-synced karaoke lyrics`;
   const description =
     `Sing ${track.trackName} by ${track.artistName} with word-level timed karaoke lyrics ` +
-    `on Karalyr — free, community-corrected, and exportable as Enhanced LRC.`;
+    `on Karalyr - free, community-corrected, and exportable as Enhanced LRC.`;
   return {
     title,
     description,
@@ -85,7 +85,7 @@ export default async function TrackPage({
   if (!track) notFound();
 
   // Bare-id links and stale slugs (a renamed track, a hand-typed URL) resolve,
-  // then send the reader — and any crawler — to the one canonical address.
+  // then send the reader - and any crawler - to the one canonical address.
   // The Location header must be ASCII, so the native-script slug is percent-
   // encoded on the wire (params arrive decoded, so the comparison is exact).
   const canonical = trackSlug(track);

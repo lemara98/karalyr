@@ -2,16 +2,16 @@
  * Song identity for the demand queue.
  *
  * A want for "the same song" arrives as a YouTube video, a re-upload, a
- * Spotify track, or with no URL at all — so the queue dedupes on normalized
+ * Spotify track, or with no URL at all - so the queue dedupes on normalized
  * artist+track, never on a video key. Everything here is a port of
  * `normalizeForMatch` in the Karafilt extension's shared/song-match.js, so
  * both sides derive the same identity for the same song. Keep the two in
  * sync; the folding tables below are the part that matters for this catalog
  * (Cyrillic and Balkan diacritics). Non-Latin scripts (Devanagari, Thai,
- * Han…) pass through unfolded — the key preserves them verbatim, it never
+ * Han…) pass through unfolded - the key preserves them verbatim, it never
  * erases them (an erased script would collide every such song onto one key).
  *
- * Pure and dependency-free — the API computes the key server-side on every
+ * Pure and dependency-free - the API computes the key server-side on every
  * intake, so a client can never fragment dedup by sending its own.
  */
 
@@ -21,7 +21,7 @@
 //
 // DELIBERATE DIVERGENCE from the extension: it maps Latin "đ" → "d" while
 // mapping Cyrillic "ђ" → "dj", so "Đorđe" and "Ђорђе" fold differently. Its
-// fuzzy matcher absorbs that; an equality-based dedup key cannot — the same
+// fuzzy matcher absorbs that; an equality-based dedup key cannot - the same
 // artist would get two separate wants depending on the script they were typed
 // in. "dj" is also the conventional Serbian romanization, and it makes the
 // whole alphabet consistent (đ/ђ, lj/љ, nj/њ, dž/џ, ć/ћ, č/ч, š/ш, ž/ж all
@@ -65,7 +65,7 @@ const NOISE_WORDS =
 function collapse(s: string): string {
   return (
     s
-      // Keep letters, combining marks, and digits in EVERY script — \p{M}
+      // Keep letters, combining marks, and digits in EVERY script - \p{M}
       // matters: Devanagari/Thai vowel signs are marks, and dropping them
       // would conflate तुम/तिम. Latin input is pure ASCII after asciiFold,
       // so Latin/Cyrillic keys are byte-identical to the old [a-z0-9] rule.
@@ -83,7 +83,7 @@ function collapse(s: string): string {
  * Normalized comparison form of one field (artist or track).
  *
  * Falls back to the un-stripped fold when removing noise words would empty
- * the string — a band actually called "Live" must not normalize to "".
+ * the string - a band actually called "Live" must not normalize to "".
  * The last resort is the raw lowercased string ("|" excluded): a title that
  * is entirely symbols ("!!!", "?") must still key distinctly, never as "".
  */

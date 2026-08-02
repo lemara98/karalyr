@@ -32,10 +32,10 @@ echo "[backup] dumping Turso db '$DB_NAME'..."
 turso db shell "$DB_NAME" .dump | gzip >"$tmp"
 
 # A real dump contains the schema; an auth failure or truncation does not.
-# Never prune on a failed run — a broken cron must not eat the good copies.
+# Never prune on a failed run - a broken cron must not eat the good copies.
 if ! gzip -cd "$tmp" | head -200 | grep -q "CREATE TABLE"; then
   rm -f "$tmp"
-  echo "[backup] dump looks empty or invalid — keeping old backups, aborting" >&2
+  echo "[backup] dump looks empty or invalid - keeping old backups, aborting" >&2
   exit 1
 fi
 mv "$tmp" "$out"

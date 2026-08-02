@@ -120,7 +120,7 @@ def post_fail(job_id, error, permanent):
         {"worker_id": WORKER_ID, "error": str(error)[:2000], "permanent": permanent},
     )
     if status == 409:
-        log(f"job #{job_id}: lease lost while reporting failure — abandoning")
+        log(f"job #{job_id}: lease lost while reporting failure - abandoning")
     else:
         log(f"job #{job_id}: reported failure (permanent={permanent})")
 
@@ -137,12 +137,12 @@ def heartbeat_loop(job_id, stop):
             failures += 1
             log(f"job #{job_id}: heartbeat failed ({failures}/3): {err}")
             if failures >= 3:
-                log(f"job #{job_id}: heartbeats keep failing — stopping the run")
+                log(f"job #{job_id}: heartbeats keep failing - stopping the run")
                 stop.set()
             continue
         failures = 0
         if status == 409:
-            log(f"job #{job_id}: lease lost (heartbeat 409) — stopping the run")
+            log(f"job #{job_id}: lease lost (heartbeat 409) - stopping the run")
             stop.set()
         elif status != 200:
             log(f"job #{job_id}: unexpected heartbeat status {status}")
@@ -150,7 +150,7 @@ def heartbeat_loop(job_id, stop):
 
 def kill_child(proc):
     # Kill the whole process group: align.py spawns demucs/yt-dlp children
-    # that inherit the stdout pipe — killing only the direct child would leave
+    # that inherit the stdout pipe - killing only the direct child would leave
     # them running and keep the read loop blocked past EOF.
     try:
         os.killpg(proc.pid, signal.SIGKILL)
@@ -225,10 +225,10 @@ def run_job(job, audio_path):
                 CURRENT_CHILD = None
 
             if stop.is_set() or SHUTDOWN.is_set():
-                log(f"job #{job_id}: run stopped (lease lost or shutting down) — abandoning")
+                log(f"job #{job_id}: run stopped (lease lost or shutting down) - abandoning")
                 return
             if timed_out.is_set():
-                log(f"job #{job_id}: timed out — killed the aligner")
+                log(f"job #{job_id}: timed out - killed the aligner")
                 post_fail(job_id, f"job timed out after {JOB_TIMEOUT_SECONDS}s", False)
                 return
             if code != 0:
@@ -250,7 +250,7 @@ def run_job(job, audio_path):
 
             # Meta is best-effort (the job's intake fields win server-side).
             # align.py can leave placeholder strings in the sidecar (e.g.
-            # duration "SECONDS" when yt-dlp reports none) — drop anything
+            # duration "SECONDS" when yt-dlp reports none) - drop anything
             # that isn't a real value rather than risk a 400 on /complete.
             body = {"worker_id": WORKER_ID, "payload": payload}
             if isinstance(meta, dict):
@@ -265,7 +265,7 @@ def run_job(job, audio_path):
             status, data = api_post(f"/api/worker/jobs/{job_id}/complete", body)
             if status == 200 and isinstance(data, dict):
                 log(
-                    f"job #{job_id}: complete — revision #{data.get('revision_id')} "
+                    f"job #{job_id}: complete - revision #{data.get('revision_id')} "
                     f"on track #{data.get('track_id')} ({data.get('revision_status')})"
                 )
             elif status == 400:
@@ -273,7 +273,7 @@ def run_job(job, audio_path):
                 log(f"job #{job_id}: payload rejected: {err}")
                 post_fail(job_id, err, True)
             elif status == 409:
-                log(f"job #{job_id}: lease lost before completion — abandoning")
+                log(f"job #{job_id}: lease lost before completion - abandoning")
             else:
                 log(f"job #{job_id}: unexpected /complete status {status}")
         finally:
@@ -281,7 +281,7 @@ def run_job(job, audio_path):
 
 
 def handle_signal(signum, _frame):
-    log(f"received {signal.Signals(signum).name} — shutting down")
+    log(f"received {signal.Signals(signum).name} - shutting down")
     SHUTDOWN.set()
     proc = CURRENT_CHILD
     if proc is not None:
@@ -321,18 +321,18 @@ def main():
         sys.exit(1)
 
     if status == 401:
-        log("server rejected WORKER_TOKEN (401) — fix the env file")
+        log("server rejected WORKER_TOKEN (401) - fix the env file")
         sys.exit(1)
     if status not in (200, 204):
         log(f"unexpected /claim status {status}")
         sys.exit(1)
     if status == 204 or not isinstance(data, dict) or not data.get("job"):
-        log("nothing queued — promote a song in /admin first")
+        log("nothing queued - promote a song in /admin first")
         return
 
     job = data["job"]
     log(
-        f"claimed job #{job['id']}: {job.get('artist_name')} — {job.get('track_name')} "
+        f"claimed job #{job['id']}: {job.get('artist_name')} - {job.get('track_name')} "
         f"(attempt {job.get('attempts')}/{job.get('max_attempts')})"
     )
     log(f"aligning from {args.audio}")

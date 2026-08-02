@@ -70,7 +70,7 @@ export function TakedownAdmin() {
   async function remove(notice: Notice) {
     const raw = prompt(
       `Revision ids to purge for notice #${notice.id}, comma-separated.\n\n` +
-        `This is IRREVERSIBLE — the lyric payloads are overwritten, not hidden.`
+        `This is IRREVERSIBLE - the lyric payloads are overwritten, not hidden.`
     );
     if (!raw) return;
     const ids = raw
@@ -131,7 +131,7 @@ export function TakedownAdmin() {
               <p>
                 <span className="font-medium">{n.claimantName}</span>
                 {n.claimantOrg && <span className="text-[color:var(--color-text-muted)]"> · {n.claimantOrg}</span>}
-                <span className="text-[color:var(--color-text-dim)]"> — {n.claimantRole}</span>
+                <span className="text-[color:var(--color-text-dim)]"> - {n.claimantRole}</span>
               </p>
               <a href={`mailto:${n.claimantEmail}`} className="text-xs text-[color:var(--klr-b)] hover:underline">
                 {n.claimantEmail}
@@ -168,7 +168,7 @@ export function TakedownAdmin() {
                 )}
                 {n.resolution && <p className="mt-1">{n.resolution}</p>}
                 <p className="mt-1">
-                  {n.actionedBy} · {n.actionedAt ? new Date(n.actionedAt).toLocaleString() : "—"}
+                  {n.actionedBy} · {n.actionedAt ? new Date(n.actionedAt).toLocaleString() : "-"}
                 </p>
               </div>
             )}

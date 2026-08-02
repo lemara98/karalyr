@@ -1,6 +1,6 @@
 // Thin view over the service worker's state, plus the one thing that *must*
 // happen here: getMediaStreamId. tabCapture only grants a stream for a tab the
-// extension was invoked on, and clicking this button is that invocation — call
+// extension was invoked on, and clicking this button is that invocation - call
 // it from the service worker instead and Chrome refuses with "Extension has not
 // been invoked for the current page".
 

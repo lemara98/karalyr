@@ -21,7 +21,7 @@ cached by torchaudio) and the Demucs model (~80 MB).
 
 1. Get the song as a local audio file you legitimately possess (bought MP3,
    Bandcamp download, CD rip, your own recording).
-2. Save the lyrics as plain text, one sung line per row (an .lrc also works —
+2. Save the lyrics as plain text, one sung line per row (an .lrc also works -
    timestamps are ignored, only text is used).
 3. Run:
 
@@ -41,7 +41,7 @@ npx tsx scripts/import-aligned.ts \
   --payload /tmp/payload.json
 ```
 
-Open the printed track URL and press Play — word-level karaoke sweep from
+Open the printed track URL and press Play - word-level karaoke sweep from
 true forced alignment. The revision enters at the `auto_aligned` tier, so
 community submissions and signals still outrank/refine it as usual.
 
@@ -50,7 +50,7 @@ the aligner; the stored payload keeps the original spelling.
 
 ## Fulfilling a queue request
 
-Requests on `/queue` are demand only — nothing is worked on until you promote a
+Requests on `/queue` are demand only - nothing is worked on until you promote a
 song in `/admin`. **Nothing here downloads audio**: `queue_worker.py` used to
 pass `--youtube` to the aligner and no longer does, so promoting a song can
 never trigger a fetch. Two ways to supply the audio.
@@ -63,9 +63,9 @@ KARALYR_URL=https://karalyr.example.com WORKER_TOKEN=the-shared-secret \
 ```
 
 Claims the oldest queued job and aligns it from that file, streaming the
-`[align]` log and finishing with `complete — revision #...`. Exits 0 when
+`[align]` log and finishing with `complete - revision #...`. Exits 0 when
 nothing was queued, 1 if the server was unreachable. Promote exactly the song
-you have audio for — the claim takes whatever is oldest.
+you have audio for - the claim takes whatever is oldest.
 
 Config can live in an env file instead of the command line:
 
@@ -85,14 +85,14 @@ Tunables (env vars, defaults in the `queue_worker.py` docstring): `WORKER_ID`
 
 For a song you have no file for, [`../capture-extension/`](../capture-extension/README.md)
 records it from your own playback and feeds `align.py --audio` via
-`worker/capture_host.py` — same aligner, same result, no download. That README
+`worker/capture_host.py` - same aligner, same result, no download. That README
 covers the whole setup.
 
 ### The systemd unit
 
 `worker/karalyr-worker.service` predates both paths and assumed an unattended
-polling daemon. Fulfilment is operator-driven by design now — you decide per
-song — so there is nothing to run continuously. The unit is kept for reference
+polling daemon. Fulfilment is operator-driven by design now - you decide per
+song - so there is nothing to run continuously. The unit is kept for reference
 only.
 
 ## Notes
@@ -100,14 +100,14 @@ only.
 - `--youtube <url>` (instead of `--audio`) fetches the audio via yt-dlp into
   the run's temp dir and deletes it afterwards, and pre-fills artist/title/
   duration in the printed import command. **Personal-use, local-machine flag
-  only**: downloading from YouTube violates YouTube's ToS — never expose this
+  only**: downloading from YouTube violates YouTube's ToS - never expose this
   in a hosted flow. Requires ffmpeg.
 - `--no-demucs` skips vocal separation (only for a cappella/vocals-only audio).
 - Quality: on clean vocal stems, word timings typically land within
-  ±50–150 ms — noticeably tighter than the extension's listen-along
+  ±50–150 ms - noticeably tighter than the extension's listen-along
   energy-onset estimates. Both feed the same revision system.
 - Legal posture: processing audio you possess, locally, publishing only
-  timing metadata. Where the audio came from is on you — see the project
+  timing metadata. Where the audio came from is on you - see the project
   README's deployment/legal notes.
 
 ## Daily database backups
@@ -115,7 +115,7 @@ only.
 With new lyrics landing every day, the production Turso database gets a
 daily SQL dump. `scripts/backup-db.sh` writes a dated `karalyr-<stamp>.sql.gz`
 into `~/karalyr-backups` (30-day retention) and refuses to prune anything
-when a dump comes back empty — a broken run never eats the good copies.
+when a dump comes back empty - a broken run never eats the good copies.
 
 Enable the schedule with the user units next to this file:
 

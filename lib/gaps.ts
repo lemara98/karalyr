@@ -1,6 +1,6 @@
 // Instrumental-gap detection for the karaoke player: stretches longer than
 // GAP_MIN_MS with no timed lyrics get a filling progress bar in LyricsView
-// instead of a dead screen. Pure — unit-tested in tests/gaps.test.ts.
+// instead of a dead screen. Pure - unit-tested in tests/gaps.test.ts.
 
 export const GAP_MIN_MS = 5000;
 

@@ -194,7 +194,7 @@ export async function searchTracks(db: Db, query: string, limit = 25): Promise<S
   if (rows.length === 0 && /[^\x00-\x7f]/.test(query)) {
     // FTS5's unicode61 tokenizer treats an unspaced Thai/Chinese query as one
     // blob, so prefix matching fails on partial input. LIKE is script-agnostic
-    // — an acceptable full-scan fallback at this catalog's size.
+    // - an acceptable full-scan fallback at this catalog's size.
     const like = `%${query.trim()}%`;
     rows = await db.all(sql`
       SELECT t.*, r.tier AS best_tier,
@@ -238,7 +238,7 @@ export interface MostUsedTrack extends Track {
 }
 
 /**
- * Tracks with karaoke lyrics, ranked by how much they are actually used —
+ * Tracks with karaoke lyrics, ranked by how much they are actually used -
  * derived from the usage data we already store rather than a play counter:
  * every vote/report signal and lyric comment counts its author once
  * (distinct fingerprints / user ids; system fingerprints excluded). Ties
@@ -382,7 +382,7 @@ export interface LibraryPageTrack extends Track {
 export const LIBRARY_PAGE_SIZE = 48;
 
 /**
- * One page of the whole library — every track with karaoke lyrics, newest
+ * One page of the whole library - every track with karaoke lyrics, newest
  * first. Keyset paginated on the track id rather than OFFSET: the cursor
  * stays correct while someone scrolls even if songs land in the meantime,
  * and it rides the primary key instead of counting rows it will throw away.
@@ -438,7 +438,7 @@ export async function listSyncedTracksPage(
   };
 }
 
-/** Languages present in the synced library with counts — the /library filter chips. */
+/** Languages present in the synced library with counts - the /library filter chips. */
 export async function listTrackLanguages(
   db: Db
 ): Promise<{ language: string; n: number }[]> {
@@ -458,7 +458,7 @@ export interface NewestSyncedTrack extends Track {
   syncedAt: number;
 }
 
-/** Tracks whose karaoke lyrics arrived most recently — the /library carousel. */
+/** Tracks whose karaoke lyrics arrived most recently - the /library carousel. */
 export async function listNewestSyncedTracks(db: Db, limit = 12): Promise<NewestSyncedTrack[]> {
   const rows = await db.all<{
     id: number;
@@ -609,7 +609,7 @@ export interface WantedSong {
   videoKey: string | null;
   /** Set when the song is already in the library, just without word timing. */
   trackId: number | null;
-  /** Opening of the submitted lyrics — a teaser, not the full text. */
+  /** Opening of the submitted lyrics - a teaser, not the full text. */
   lyricsPreview: string | null;
   createdAt: number;
 }
@@ -617,7 +617,7 @@ export interface WantedSong {
 export interface WantedSearchResult {
   songs: WantedSong[];
   total: number;
-  /** The page actually served — clamped into [1, ceil(total/perPage)]. */
+  /** The page actually served - clamped into [1, ceil(total/perPage)]. */
   page: number;
   perPage: number;
 }
@@ -629,15 +629,15 @@ function escapeLike(s: string): string {
 
 /**
  * Search + paginate the open requests. Every term must match (AND), each
- * against any of artist, title, album, or the submitted lyrics text — people
+ * against any of artist, title, album, or the submitted lyrics text - people
  * often remember a line, not the title. LIKE is plenty: the queue is capped
  * at a few hundred rows, so this needs no FTS.
  *
  * Ranked by how many distinct people asked, oldest first on a tie so a
- * long-standing request isn't buried by a newer one with equal demand — a
+ * long-standing request isn't buried by a newer one with equal demand - a
  * fully deterministic order, which is what makes OFFSET paging stable.
  *
- * Songs that have since been word-synced are excluded defensively — closing
+ * Songs that have since been word-synced are excluded defensively - closing
  * them is resolveWantedForTrack's job, but a request that arrived while a
  * revision was mid-flight shouldn't show up here in the meantime.
  */
@@ -666,7 +666,7 @@ export async function searchWantedSongs(
   ];
   const whereSql = sql.join(where, sql` AND `);
 
-  // Count first (no votes join needed — results are one row per job), then
+  // Count first (no votes join needed - results are one row per job), then
   // clamp the page so out-of-range requests serve the last page, not a void.
   const [count] = await db.all<{ n: number }>(
     sql`SELECT COUNT(*) AS n FROM sync_jobs j WHERE ${whereSql}`
@@ -715,7 +715,7 @@ export async function searchWantedSongs(
   return { songs, total, page: safePage, perPage };
 }
 
-/** The most-wanted songs — page 1 of the unfiltered search. */
+/** The most-wanted songs - page 1 of the unfiltered search. */
 export async function listMostWantedSongs(db: Db, limit = 10): Promise<WantedSong[]> {
   return (await searchWantedSongs(db, { perPage: limit })).songs;
 }
@@ -763,7 +763,7 @@ export async function countJobVoters(db: Db, jobId: number): Promise<number> {
 
 /**
  * Every source anyone offered for one request, newest first. Dedup collapses on
- * song identity, so this is where the second and third link for a song live —
+ * song identity, so this is where the second and third link for a song live -
  * the operator picks which one to actually work from.
  */
 export async function listWantedSources(

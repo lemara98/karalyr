@@ -4,7 +4,7 @@
 # Chrome only starts a native host that is named in a manifest under its own
 # config directory, and that manifest has to list the exact extension ID
 # allowed to connect. The ID is generated when you load the unpacked extension,
-# so this cannot be committed pre-filled — run this after loading it.
+# so this cannot be committed pre-filled - run this after loading it.
 #
 # Usage: worker/install-capture-host.sh <extension-id> [--browser chrome|chromium|brave]
 
@@ -45,7 +45,7 @@ mkdir -p "$TARGET_DIR"
 cat > "$TARGET_DIR/$HOST_NAME.json" <<EOF
 {
   "name": "$HOST_NAME",
-  "description": "Karalyr capture host — aligns captured tab audio locally",
+  "description": "Karalyr capture host - aligns captured tab audio locally",
   "path": "$HOST_PATH",
   "type": "stdio",
   "allowed_origins": ["chrome-extension://$EXT_ID/"]
@@ -57,7 +57,7 @@ echo "  host:      $HOST_PATH"
 echo "  extension: $EXT_ID"
 echo
 if [[ -f "$HOME/.config/karalyr-worker.env" ]]; then
-  echo "Found ~/.config/karalyr-worker.env — the host will read KARALYR_URL and WORKER_TOKEN from it."
+  echo "Found ~/.config/karalyr-worker.env - the host will read KARALYR_URL and WORKER_TOKEN from it."
 else
   echo "NOTE: ~/.config/karalyr-worker.env is missing. Create it with:"
   echo "  KARALYR_URL=http://localhost:3000"

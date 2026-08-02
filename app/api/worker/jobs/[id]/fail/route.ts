@@ -6,7 +6,7 @@ import { isWorkerRequest } from "@/lib/worker-auth";
 
 const bodySchema = z.object({
   worker_id: z.string().min(1).max(100),
-  // Clamped, not rejected — workers send whatever traceback they have.
+  // Clamped, not rejected - workers send whatever traceback they have.
   error: z.string().min(1).transform((s) => s.slice(0, 2000)),
   permanent: z.boolean().default(false),
 });
