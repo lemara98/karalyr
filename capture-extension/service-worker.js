@@ -45,7 +45,8 @@ function connectHost() {
       return setPhase("idle");
     }
     if (msg.type === "done") {
-      pushLog(`Done - revision #${msg.revision_id} on track #${msg.track_id} (${msg.revision_status})`);
+      const chart = msg.chord_chart_id ? `, chord chart #${msg.chord_chart_id}` : "";
+      pushLog(`Done - revision #${msg.revision_id} on track #${msg.track_id} (${msg.revision_status}${chart})`);
       return setPhase("idle", { job: null, tabId: null });
     }
     if (msg.type === "error") {

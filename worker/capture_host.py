@@ -87,7 +87,7 @@ def refresh_config():
     env file (say, to swap a stub aligner for the real one) now takes effect
     on the next claim.
     """
-    global KARALYR_URL, WORKER_TOKEN, WORKER_ID, PYTHON_BIN, ALIGN_SCRIPT
+    global KARALYR_URL, WORKER_TOKEN, WORKER_ID, PYTHON_BIN, ALIGN_SCRIPT, WORKER_CHORDS
     f = read_env_file()
 
     def pick(key, default=""):
@@ -98,9 +98,11 @@ def refresh_config():
     WORKER_ID = pick("WORKER_ID", "chrome-capture")
     PYTHON_BIN = pick("PYTHON_BIN", str(SCRIPT_DIR / ".venv" / "bin" / "python"))
     ALIGN_SCRIPT = pick("ALIGN_SCRIPT", str(SCRIPT_DIR / "align.py"))
+    WORKER_CHORDS = pick("WORKER_CHORDS", "1") != "0"
 
 
 KARALYR_URL = WORKER_TOKEN = WORKER_ID = PYTHON_BIN = ALIGN_SCRIPT = ""
+WORKER_CHORDS = True
 refresh_config()
 
 
@@ -194,12 +196,16 @@ def align_and_report(job, audio_path):
             tmpdir = pathlib.Path(tmp)
             lyrics_path = tmpdir / "lyrics.txt"
             out_path = tmpdir / "payload.json"
+            chords_path = tmpdir / "chords.json"
             lyrics_path.write_text(job.get("plain_lyrics") or "", encoding="utf-8")
 
             send_log("starting the aligner (Demucs first - this is the slow part)")
+            argv = [PYTHON_BIN, ALIGN_SCRIPT, "--audio", str(audio_path),
+                    "--lyrics", str(lyrics_path), "--out", str(out_path)]
+            if WORKER_CHORDS:
+                argv += ["--chords-out", str(chords_path)]
             proc = subprocess.Popen(
-                [PYTHON_BIN, ALIGN_SCRIPT, "--audio", str(audio_path),
-                 "--lyrics", str(lyrics_path), "--out", str(out_path)],
+                argv,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                 start_new_session=True,  # own group, so killing reaps demucs too
             )
@@ -230,17 +236,25 @@ def align_and_report(job, audio_path):
                 post_fail(job_id, f"aligner exited 0 but payload is unreadable: {e}", False)
                 return {"type": "error", "message": "unreadable payload"}
 
+            body = {"worker_id": WORKER_ID, "payload": payload}
+            # Chords are best-effort: align.py only writes the file when
+            # detection succeeded, and the server drops an invalid chart
+            # without failing the lyrics import.
+            if chords_path.exists():
+                try:
+                    body["chords"] = json.loads(chords_path.read_text(encoding="utf-8"))
+                except (OSError, ValueError) as e:
+                    send_log(f"chords.json unreadable ({e}) - completing without chords")
+
             send_log("posting the result to Karalyr")
-            status, data = api_post(
-                f"/api/worker/jobs/{job_id}/complete",
-                {"worker_id": WORKER_ID, "payload": payload},
-            )
+            status, data = api_post(f"/api/worker/jobs/{job_id}/complete", body)
             if status == 200 and isinstance(data, dict):
                 return {
                     "type": "done",
                     "track_id": data.get("track_id"),
                     "revision_id": data.get("revision_id"),
                     "revision_status": data.get("revision_status"),
+                    "chord_chart_id": data.get("chord_chart_id"),
                 }
             message = (data or {}).get("message") or f"server returned {status}"
             if status == 400:  # the payload itself is bad; retrying won't help
