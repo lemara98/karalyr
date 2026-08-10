@@ -1,12 +1,14 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "./client";
 import {
+  chordCharts,
   lyricComments,
   revisions,
   syncJobComments,
   syncJobs,
   tracks,
   trackVideos,
+  type ChordChartRow,
   type LyricComment,
   type Revision,
   type Source,
@@ -151,6 +153,66 @@ export async function insertRevision(db: Db, input: NewRevisionInput): Promise<R
     .returning();
 
   await computeBestRevision(db, input.trackId);
+  return created;
+}
+
+// ── chord charts ────────────────────────────────────────────────────────────
+
+/** The chart /api/chords serves: newest active row wins (append-only table). */
+export async function getActiveChordChart(db: Db, trackId: number): Promise<ChordChartRow | null> {
+  const [row] = await db
+    .select()
+    .from(chordCharts)
+    .where(and(eq(chordCharts.trackId, trackId), eq(chordCharts.status, "active")))
+    .orderBy(desc(chordCharts.createdAt), desc(chordCharts.id))
+    .limit(1);
+  return row ?? null;
+}
+
+/** Cheap discovery flag for /api/get's karalyr.has_chords. */
+export async function hasActiveChordChart(db: Db, trackId: number): Promise<boolean> {
+  const [row] = await db
+    .select({ id: chordCharts.id })
+    .from(chordCharts)
+    .where(and(eq(chordCharts.trackId, trackId), eq(chordCharts.status, "active")))
+    .limit(1);
+  return !!row;
+}
+
+/** Any taken_down chart blocks re-import — see lib/chord-import.ts. */
+export async function getTakenDownChordChart(
+  db: Db,
+  trackId: number
+): Promise<ChordChartRow | null> {
+  const [row] = await db
+    .select()
+    .from(chordCharts)
+    .where(and(eq(chordCharts.trackId, trackId), eq(chordCharts.status, "taken_down")))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function insertChordChart(
+  db: Db,
+  input: {
+    trackId: number;
+    payload: string;
+    submitterFingerprint: string;
+    derivedFromVideoKey: string | null;
+  }
+): Promise<ChordChartRow> {
+  const [created] = await db
+    .insert(chordCharts)
+    .values({
+      trackId: input.trackId,
+      source: "auto_detected",
+      tier: "auto_aligned",
+      payload: input.payload,
+      submitterFingerprint: input.submitterFingerprint,
+      derivedFromVideoKey: input.derivedFromVideoKey,
+      createdAt: Date.now(),
+    })
+    .returning();
   return created;
 }
 

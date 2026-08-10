@@ -79,7 +79,28 @@ Tunables (env vars, defaults in the `queue_worker.py` docstring): `WORKER_ID`
 (hostname), `LEASE_SECONDS` (2700), `HEARTBEAT_SECONDS` (300),
 `JOB_TIMEOUT_SECONDS` (2400). For testing without burning CPU, `PYTHON_BIN` and
 `ALIGN_SCRIPT` point it at any stub honouring `--audio <path> --lyrics <path>
---out <path>` that writes a canned payload.
+--out <path>` that writes a canned payload — set `WORKER_CHORDS=0` alongside,
+since a stub won't know `--chords-out`.
+
+### Chords
+
+Every job also detects a chord chart (worker/chords.py: lv-chordia, the MIT
+ISMIR-2019 large-vocabulary model, run on the ORIGINAL mix — stems measurably
+underperform). Adds roughly 0.7× the song length on CPU on top of demucs.
+Chord failures never fail a lyrics job; the chart just doesn't ship. Disable
+per-run with `WORKER_CHORDS=0`, pick a backend with `CHORD_BACKEND`.
+
+Backfill chords for a track that already has lyrics (or spot-check the model
+against your ear) with the standalone tool:
+
+```bash
+# eyeball a chart, no server involved
+worker/.venv/bin/python worker/analyze_chords.py --audio ~/Music/song.mp3 --print
+
+# upload to an existing track (same env as queue_worker.py)
+worker/.venv/bin/python worker/analyze_chords.py --audio ~/Music/song.mp3 \
+  --video-key yt:dQw4w9WgXcQ
+```
 
 ### Capture it while it plays
 

@@ -21,6 +21,9 @@ Environment:
   JOB_TIMEOUT_SECONDS  kill the aligner after this long (default 2400)
   PYTHON_BIN           python that runs the aligner (default worker/.venv/bin/python)
   ALIGN_SCRIPT         aligner script path (default worker/align.py)
+  WORKER_CHORDS        "0" disables the chord-detection pass (default "1").
+                       Set 0 when ALIGN_SCRIPT points at a stub that only
+                       honours --audio/--lyrics/--out.
 
 Usage:
   queue_worker.py --audio PATH   claim the oldest queued job and align it from
@@ -53,6 +56,7 @@ HEARTBEAT_SECONDS = int(os.environ.get("HEARTBEAT_SECONDS") or 300)
 JOB_TIMEOUT_SECONDS = int(os.environ.get("JOB_TIMEOUT_SECONDS") or 2400)
 PYTHON_BIN = os.environ.get("PYTHON_BIN") or str(SCRIPT_DIR / ".venv" / "bin" / "python")
 ALIGN_SCRIPT = os.environ.get("ALIGN_SCRIPT") or str(SCRIPT_DIR / "align.py")
+WORKER_CHORDS = os.environ.get("WORKER_CHORDS", "1") != "0"
 HTTP_TIMEOUT = 15
 TAIL_LINES = 40
 
@@ -184,6 +188,7 @@ def run_job(job, audio_path):
         tmpdir = pathlib.Path(tmp)
         lyrics_path = tmpdir / "lyrics.txt"
         out_path = tmpdir / "payload.json"
+        chords_path = tmpdir / "chords.json"
         lyrics_path.write_text(job.get("plain_lyrics") or "", encoding="utf-8")
 
         threading.Thread(target=heartbeat_loop, args=(job_id, stop), daemon=True).start()
@@ -191,6 +196,8 @@ def run_job(job, audio_path):
             try:
                 argv = [PYTHON_BIN, ALIGN_SCRIPT, "--audio", str(audio_path),
                         "--lyrics", str(lyrics_path), "--out", str(out_path)]
+                if WORKER_CHORDS:
+                    argv += ["--chords-out", str(chords_path)]
                 if job.get("language"):
                     argv += ["--language", str(job["language"])]
                     # Scripts with no word tokenizer get honest line-sync
@@ -262,11 +269,24 @@ def run_job(job, audio_path):
                         meta.pop(key, None)
                 body["meta"] = meta
 
+            # Chords are best-effort too: align.py only writes the file when
+            # detection succeeded, and the server drops an invalid chart
+            # without failing the lyrics import.
+            if chords_path.exists():
+                try:
+                    body["chords"] = json.loads(chords_path.read_text(encoding="utf-8"))
+                except (OSError, ValueError) as err:
+                    log(f"job #{job_id}: chords.json unreadable ({err}) - completing without chords")
+
             status, data = api_post(f"/api/worker/jobs/{job_id}/complete", body)
             if status == 200 and isinstance(data, dict):
+                chart_note = (
+                    f", chord chart #{data['chord_chart_id']}"
+                    if data.get("chord_chart_id") else ""
+                )
                 log(
                     f"job #{job_id}: complete - revision #{data.get('revision_id')} "
-                    f"on track #{data.get('track_id')} ({data.get('revision_status')})"
+                    f"on track #{data.get('track_id')} ({data.get('revision_status')}{chart_note})"
                 )
             elif status == 400:
                 err = error_text(data, "server rejected the payload")

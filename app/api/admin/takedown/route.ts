@@ -21,7 +21,12 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("remove"),
     notice_id: z.number().int().positive(),
-    revision_ids: z.array(z.number().int().positive()).min(1).max(500),
+    // A notice may name lyric revisions, chord charts, or both - but never
+    // neither (checked in the handler: discriminatedUnion members must be
+    // plain objects, so no .refine here), because "remove nothing" is a
+    // decline, not a removal.
+    revision_ids: z.array(z.number().int().positive()).max(500).default([]),
+    chord_chart_ids: z.array(z.number().int().positive()).max(500).default([]),
     resolution: z.string().max(2000).nullish(),
   }),
   z.object({
@@ -65,14 +70,23 @@ export async function POST(req: Request) {
   const db = getDb();
 
   if (body.action === "remove") {
-    const { notice, removed, tracksRecomputed } = await actionTakedown(db, {
+    if (body.revision_ids.length === 0 && body.chord_chart_ids.length === 0) {
+      return apiError(400, "BadRequest", "Name at least one revision or chord chart to remove");
+    }
+    const { notice, removed, removedChordCharts, tracksRecomputed } = await actionTakedown(db, {
       noticeId: body.notice_id,
       revisionIds: body.revision_ids,
+      chordChartIds: body.chord_chart_ids,
       actor,
       resolution: body.resolution,
     });
     if (!notice) return apiError(404, "NoticeNotFound", "Notice does not exist");
-    return json({ ok: true, removed, tracks_recomputed: tracksRecomputed });
+    return json({
+      ok: true,
+      removed,
+      removed_chord_charts: removedChordCharts,
+      tracks_recomputed: tracksRecomputed,
+    });
   }
 
   if (body.action === "decline") {

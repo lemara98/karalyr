@@ -35,6 +35,7 @@ Base URL: `http://localhost:3000`. Full docs with curl examples at `/docs`.
 | --- | --- |
 | `GET /api/get?artist_name=&track_name=&album_name=&duration=` | Best lyrics for an exact match (±2s duration). Word-synced only; a miss is a plain 404. |
 | `GET /api/get/:track_id` | Same, by internal id |
+| `GET /api/chords?youtube_id=` | Machine-detected chord chart (also `spotify_id`/`video_key`/`video_url`/`track_id`); 404 when none |
 | `GET /api/search?q=` | Full-text search (FTS5) over artist/title/album |
 | `POST /api/request-challenge` | Proof-of-work challenge for publishing |
 | `POST /api/publish` | Submit lyrics (word-synced only: Enhanced LRC / UltraStar / structured payload) |
@@ -42,9 +43,27 @@ Base URL: `http://localhost:3000`. Full docs with curl examples at `/docs`.
 | `GET /api/track/:id/revisions` | Public revision history |
 
 Responses are LRCLIB-shaped (`plainLyrics`, `syncedLyrics`) plus a `karalyr`
-object: `{ payload, tier, source, revision_id, has_word_timing }`. `payload`
-is the native format - lines with `start_ms`/`end_ms`/`singer` and optional
-per-word timing.
+object: `{ payload, tier, source, revision_id, has_word_timing, has_chords }`.
+`payload` is the native format - lines with `start_ms`/`end_ms`/`singer` and
+optional per-word timing.
+
+Chord charts are separate from lyric revisions (a lyric correction must never
+drop or shift a chart) and machine-detected by the worker from audio the
+operator supplies, on the original mix. The `/api/chords` payload:
+
+```json
+{ "format_version": 1,
+  "segments": [{ "start_ms": 15230, "end_ms": 17890, "label": "Bb:maj7/3",
+                 "root_pc": 10, "quality": 0, "ext": "maj7", "bass_pc": 2,
+                 "confidence": 0.7 }],
+  "meta": { "model": "lv-chordia-ensemble", "dict": "submission",
+            "key_pc": 5, "key_mode": "maj",
+            "analyzed_from": "original_mix", "duration_ms": 215000 } }
+```
+
+`root_pc`/`bass_pc` are pitch classes (C = 0); `quality` 1 means the symbol
+takes a lowercase "m"; `label` keeps the raw Harte form, respelled for the
+estimated key (Bb in F major, never A#).
 
 ## Architecture notes
 

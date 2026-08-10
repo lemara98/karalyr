@@ -559,6 +559,16 @@ def main():
         help="align whole lines only (no word timing) - the honest mode for "
         "scripts with no word tokenizer (km/lo)",
     )
+    ap.add_argument(
+        "--chords-out",
+        type=Path,
+        help="also detect chords (from the ORIGINAL mix, not the stems) and "
+        "write the chart JSON here; failures are logged and never fatal",
+    )
+    ap.add_argument(
+        "--chord-backend",
+        help="chord model to use (see worker/chords.py BACKENDS); default lv-chordia",
+    )
     args = ap.parse_args()
 
     language = args.language.lower().strip() if args.language else None
@@ -596,6 +606,27 @@ def main():
             language=language,
             line_level=args.line_level,
         )
+        # Chords come from the ORIGINAL mix (models are trained on full mixes;
+        # stems measurably underperform - see worker/chords.py), so this is
+        # independent of demucs and works with --no-demucs. It runs inside the
+        # temp-dir block because a --youtube download lives there. Never fatal:
+        # a chord failure must not fail (or even look like it failed) a lyrics
+        # job, so the except keeps the exit code at 0 and the wording clear of
+        # queue_worker's PERMANENT_MARKERS.
+        if args.chords_out:
+            try:
+                from chords import analyze
+                print("[align] chords: analyzing the original mix...")
+                chart = analyze(audio, backend=args.chord_backend)
+                args.chords_out.write_text(
+                    json.dumps(chart, ensure_ascii=False), encoding="utf-8"
+                )
+                print(
+                    f"[align] chords: wrote {args.chords_out} "
+                    f"({len(chart['segments'])} segments)"
+                )
+            except Exception as err:
+                print(f"[align] chords: skipped ({err}) - continuing without chords")
         # temp dir (downloaded audio + separated stems + transcript) is deleted on exit
 
     payload = to_payload(

@@ -10,8 +10,10 @@ import {
   type CSSProperties,
 } from "react";
 import type { LyricsPayload } from "@/lib/formats/types";
+import type { ChordChart } from "@/lib/formats/chords";
 import { wordFillPercent } from "@/lib/formats";
 import { gapSegments } from "@/lib/gaps";
+import { chordLabel, keyUsesFlats } from "@/lib/chord-label";
 import { wordSeparators } from "@/lib/word-separators";
 
 /**
@@ -126,12 +128,15 @@ export function LyricsView({
   durationMs,
   captionLead,
   fill = false,
+  chordChart = null,
 }: {
   payload: LyricsPayload;
   clock: PlaybackClock;
   durationMs: number;
   captionLead: string;
   fill?: boolean;
+  /** Machine-detected chart from chord_charts (null = no chords for the track). */
+  chordChart?: ChordChart | null;
 }) {
   // The transport bar shows the real clock; every highlight below reads the
   // led time so words light up when they are actually heard.
@@ -159,6 +164,66 @@ export function LyricsView({
       return !f;
     });
   }, []);
+
+  // Chords: off by a persisted toggle, and gone entirely when the track has
+  // no chart. Labels are precomputed once per chart (key-aware spelling);
+  // per-line grouping puts each chord above the line it sounds under, and
+  // whatever falls before the first line or between verses is carried by the
+  // current-chord badge in the header row.
+  const [showChords, setShowChords] = useState(true);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("klr-chords") === "0") setShowChords(false);
+    } catch {
+      // storage unavailable - keep default
+    }
+  }, []);
+  const toggleChords = useCallback(() => {
+    setShowChords((c) => {
+      try {
+        localStorage.setItem("klr-chords", c ? "0" : "1");
+      } catch {
+        // storage unavailable - state still toggles for this session
+      }
+      return !c;
+    });
+  }, []);
+
+  const chordSegs = useMemo(() => {
+    if (!chordChart) return [];
+    const useFlats = keyUsesFlats(chordChart.meta.key_pc, chordChart.meta.key_mode);
+    return chordChart.segments.map((s) => ({ ...s, display: chordLabel(s, useFlats) }));
+  }, [chordChart]);
+
+  // Chord index per line: every chord whose onset falls while the line is
+  // actually sounding (a short tail forgives aligner slack). Chords with no
+  // line under them — intros, solos between verses, outros — belong to no
+  // line: piling a 30s solo's chords above the preceding lyric would inflate
+  // it in both scroll and focus modes, and the header badge already carries
+  // them while they sound.
+  const chordsByLine = useMemo(() => {
+    const byLine = new Map<number, typeof chordSegs>();
+    if (!chordSegs.length || !payload.lines.length) return byLine;
+    const TAIL_MS = 1500;
+    for (const seg of chordSegs) {
+      let idx = -1;
+      for (let i = 0; i < payload.lines.length; i++) {
+        if (payload.lines[i].start_ms <= seg.start_ms) idx = i;
+        else break;
+      }
+      if (idx < 0) continue;
+      if (seg.start_ms > payload.lines[idx].end_ms + TAIL_MS) continue;
+      const bucket = byLine.get(idx);
+      if (bucket) bucket.push(seg);
+      else byLine.set(idx, [seg]);
+    }
+    return byLine;
+  }, [chordSegs, payload]);
+
+  const currentChord =
+    showChords && chordSegs.length
+      ? chordSegs.find((s) => timeMs >= s.start_ms && timeMs < s.end_ms) ?? null
+      : null;
 
   const gaps = useMemo(() => gapSegments(payload.lines), [payload]);
   // Per-line separators between word spans, derived from the line text once
@@ -241,6 +306,31 @@ export function LyricsView({
         <div className="min-w-0 flex-1">
           <TransportBar {...clock} durationMs={durationMs} />
         </div>
+        {/* The current chord rides the header so it stays visible through
+            intros and solos, where there is no lyric line to hang it on.
+            Mounted whenever the lane is on (a dot during no-chord stretches)
+            with a reserved min width — a badge that appears/disappears and
+            changes width per chord would resize the flex-1 seek slider under
+            the pointer at every chord boundary. */}
+        {showChords && chordSegs.length > 0 && (
+          <span
+            className="min-w-16 flex-none rounded-md border border-[color:color-mix(in_srgb,var(--klr-a)_45%,transparent)] px-2 py-0.5 text-center text-[13px] font-bold text-[color:var(--klr-a)]"
+            style={{ fontFamily: "var(--font-mono)" }}
+            title="Detected chord playing now"
+          >
+            {currentChord ? currentChord.display : "·"}
+          </span>
+        )}
+        {chordSegs.length > 0 && (
+          <button
+            onClick={toggleChords}
+            aria-pressed={showChords}
+            title="Show machine-detected chords above the lyrics"
+            className={`btn btn-sm flex-none ${showChords ? "btn-primary" : "btn-secondary"}`}
+          >
+            Chords
+          </button>
+        )}
         <button
           onClick={toggleFocus}
           aria-pressed={focus}
@@ -265,6 +355,7 @@ export function LyricsView({
           // dimmed scroller, so the count-in lands right on it.
           const upcoming = activeGap !== null && i === activeGap.index;
           const pageCurrent = page >= 0 && pageOfLine[i] === page;
+          const lineChords = showChords ? chordsByLine.get(i) : undefined;
           return (
             <p
               key={i}
@@ -274,6 +365,28 @@ export function LyricsView({
               onClick={() => clock.seek(line.start_ms)}
               className={`line cursor-pointer ${active ? "active" : ""} ${past ? "past" : ""} ${pageCurrent ? "page-current" : ""}`}
             >
+              {lineChords && (
+                <span
+                  className="mb-0.5 block text-[12px] font-bold tracking-tight"
+                  style={{ fontFamily: "var(--font-mono)" }}
+                  aria-hidden="true"
+                >
+                  {lineChords.map((seg, k) => (
+                    <span
+                      key={k}
+                      className={
+                        timeMs >= seg.start_ms && timeMs < seg.end_ms
+                          ? "mr-3 text-[color:var(--klr-a)]"
+                          : timeMs >= seg.end_ms
+                            ? "mr-3 text-[color:var(--color-text-dim)] opacity-60"
+                            : "mr-3 text-[color:var(--color-text-dim)]"
+                      }
+                    >
+                      {seg.display}
+                    </span>
+                  ))}
+                </span>
+              )}
               {line.singer && (
                 <span
                   className={`mr-2 inline-block rounded-full border px-2 py-px align-middle text-[10px] tracking-wide ${SINGER_STYLES[line.singer]}`}
@@ -339,9 +452,11 @@ export function LyricsView({
 export function LyricsPlayer({
   payload,
   durationSeconds,
+  chordChart = null,
 }: {
   payload: LyricsPayload;
   durationSeconds: number;
+  chordChart?: ChordChart | null;
 }) {
   const durationMs = durationSeconds * 1000;
   const clock = useSimulatorClock(durationMs);
@@ -350,6 +465,7 @@ export function LyricsPlayer({
       payload={payload}
       clock={clock}
       durationMs={durationMs}
+      chordChart={chordChart}
       captionLead="Playback simulator - a plain clock, no audio. Click a line to jump."
     />
   );

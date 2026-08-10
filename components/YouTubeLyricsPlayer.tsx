@@ -147,10 +147,12 @@ export function YouTubeLyricsPlayer({
   videoId,
   payload,
   durationSeconds,
+  chordChart = null,
 }: {
   videoId: string;
   payload: LyricsPayload;
   durationSeconds: number;
+  chordChart?: import("@/lib/formats/chords").ChordChart | null;
 }) {
   const durationMs = durationSeconds * 1000;
   const yt = useYouTubeClock(videoId, durationMs);
@@ -168,6 +170,7 @@ export function YouTubeLyricsPlayer({
           payload={payload}
           clock={clock}
           durationMs={durationMs}
+          chordChart={chordChart}
           captionLead="Playback simulator - a plain clock, no audio. Click a line to jump."
         />
       </div>
@@ -191,6 +194,7 @@ export function YouTubeLyricsPlayer({
             clock={clock}
             durationMs={durationMs}
             fill
+            chordChart={chordChart}
             captionLead="Synced to the video - click a line to jump."
           />
         </div>

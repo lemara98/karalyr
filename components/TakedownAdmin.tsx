@@ -67,19 +67,36 @@ export function TakedownAdmin() {
     await load();
   }
 
-  async function remove(notice: Notice) {
-    const raw = prompt(
-      `Revision ids to purge for notice #${notice.id}, comma-separated.\n\n` +
-        `This is IRREVERSIBLE - the lyric payloads are overwritten, not hidden.`
-    );
-    if (!raw) return;
-    const ids = raw
+  function parseIds(raw: string | null): number[] {
+    if (!raw) return [];
+    return raw
       .split(",")
       .map((s) => parseInt(s.trim(), 10))
       .filter((n) => Number.isInteger(n) && n > 0);
-    if (!ids.length) return setError("No valid revision ids given");
+  }
+
+  async function remove(notice: Notice) {
+    const ids = parseIds(
+      prompt(
+        `Revision ids to purge for notice #${notice.id}, comma-separated ` +
+          `(leave empty for a chords-only removal).\n\n` +
+          `This is IRREVERSIBLE - the lyric payloads are overwritten, not hidden.`
+      )
+    );
+    // A notice can name a chord chart instead of (or as well as) lyrics -
+    // charts are a separate work with their own removal path.
+    const chartIds = parseIds(
+      prompt(`Chord chart ids to purge for notice #${notice.id}, comma-separated (usually empty):`)
+    );
+    if (!ids.length && !chartIds.length) return setError("No valid ids given");
     const resolution = prompt("Note for the record (what you removed and why):") ?? "";
-    await act({ action: "remove", notice_id: notice.id, revision_ids: ids, resolution });
+    await act({
+      action: "remove",
+      notice_id: notice.id,
+      revision_ids: ids,
+      chord_chart_ids: chartIds,
+      resolution,
+    });
   }
 
   async function decline(notice: Notice) {

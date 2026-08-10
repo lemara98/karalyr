@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getDb } from "@/lib/db/client";
-import { listTrackVideos } from "@/lib/db/queries";
+import { getActiveChordChart, listTrackVideos } from "@/lib/db/queries";
 import { revisions, tracks } from "@/lib/db/schema";
-import { validatePayload } from "@/lib/formats";
+import { validateChordChart, validatePayload, type ChordChart } from "@/lib/formats";
 import { parseTrackSlug, trackSlug } from "@/lib/track-slug";
 import { parseVideoKey, pickPreferredVideoKey } from "@/lib/video-key";
 import { AnnotatedLyrics } from "@/components/AnnotatedLyrics";
@@ -98,6 +98,19 @@ export default async function TrackPage({
 
   const payload = best ? validatePayload(JSON.parse(best.payload)) : null;
 
+  // The chord lane is best-effort: a chart that fails validation (schema
+  // drift, manual tampering) just doesn't render, it never 500s the page.
+  let chordChart: ChordChart | null = null;
+  const chartRow = await getActiveChordChart(db, trackId);
+  if (chartRow) {
+    try {
+      chordChart = validateChordChart(JSON.parse(chartRow.payload));
+      if (chordChart.segments.length === 0) chordChart = null;
+    } catch {
+      chordChart = null;
+    }
+  }
+
   const video = parseVideoKey(pickPreferredVideoKey(await listTrackVideos(db, trackId)));
 
   return (
@@ -139,9 +152,14 @@ export default async function TrackPage({
                 videoId={video.id}
                 payload={payload}
                 durationSeconds={track.durationSeconds}
+                chordChart={chordChart}
               />
             ) : (
-              <LyricsPlayer payload={payload} durationSeconds={track.durationSeconds} />
+              <LyricsPlayer
+                payload={payload}
+                durationSeconds={track.durationSeconds}
+                chordChart={chordChart}
+              />
             )}
           </div>
           <div className="flex flex-wrap items-start justify-between gap-4">

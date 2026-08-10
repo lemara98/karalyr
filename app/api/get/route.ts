@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { findTrack, findTrackByVideo } from "@/lib/db/queries";
+import { findTrack, findTrackByVideo, hasActiveChordChart } from "@/lib/db/queries";
 import { revisions } from "@/lib/db/schema";
 import { apiError, corsOptions, json } from "@/lib/api-helpers";
 import { trackResponse } from "@/lib/lrclib-compat";
@@ -44,7 +44,9 @@ export async function GET(req: Request) {
       .select()
       .from(revisions)
       .where(eq(revisions.id, track.bestRevisionId));
-    if (best) return json(trackResponse(track, best));
+    if (best) {
+      return json(trackResponse(track, best, { hasChords: await hasActiveChordChart(db, track.id) }));
+    }
   }
 
   // Miss: Karalyr only serves word-synced lyrics, so there is nothing to

@@ -1,17 +1,19 @@
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { createTestDb, type Db } from "@/lib/db/client";
 import {
+  chordCharts,
   lyricComments,
   revisions,
   signals,
   syncJobs,
   syncJobVotes,
   tracks,
+  type ChordChartRow,
   type LyricComment,
   type Revision,
   type Signal,
 } from "@/lib/db/schema";
-import type { LyricsPayload } from "@/lib/formats";
+import type { ChordChart, LyricsPayload } from "@/lib/formats";
 
 export async function makeDb(): Promise<Db> {
   const db = createTestDb();
@@ -43,6 +45,50 @@ export function samplePayload(startMs = 1000): LyricsPayload {
     ],
     meta: { language: "en", has_word_timing: true, countdown_lines: [] },
   };
+}
+
+/** A small but representative chart: an ext, a slash bass, a low-confidence
+ *  segment - the fields clients branch on. */
+export function sampleChordChart(startMs = 1000): ChordChart {
+  return {
+    format_version: 1,
+    segments: [
+      { start_ms: startMs, end_ms: startMs + 2000, label: "C:maj", root_pc: 0, quality: 0, confidence: 0.9 },
+      { start_ms: startMs + 2000, end_ms: startMs + 4000, label: "A:min7", root_pc: 9, quality: 1, ext: "7", confidence: 0.8 },
+      { start_ms: startMs + 4000, end_ms: startMs + 6000, label: "F:maj/5", root_pc: 5, quality: 0, bass_pc: 0, confidence: 0.85 },
+      { start_ms: startMs + 6000, end_ms: startMs + 8000, label: "G:7", root_pc: 7, quality: 0, ext: "7", confidence: 0.4 },
+    ],
+    meta: {
+      model: "lv-chordia-ensemble",
+      dict: "submission",
+      key_pc: 0,
+      key_mode: "maj",
+      key_confidence: 0.7,
+      analyzed_from: "original_mix",
+      duration_ms: startMs + 9000,
+    },
+  };
+}
+
+export async function makeChordChart(
+  db: Db,
+  trackId: number,
+  overrides: Partial<typeof chordCharts.$inferInsert> = {}
+): Promise<ChordChartRow> {
+  const [chart] = await db
+    .insert(chordCharts)
+    .values({
+      trackId,
+      source: "auto_detected",
+      tier: "auto_aligned",
+      payload: JSON.stringify(sampleChordChart()),
+      submitterFingerprint: "system:sync-queue",
+      status: "active",
+      createdAt: Date.now(),
+      ...overrides,
+    })
+    .returning();
+  return chart;
 }
 
 export async function makeTrack(db: Db, overrides: Partial<typeof tracks.$inferInsert> = {}) {

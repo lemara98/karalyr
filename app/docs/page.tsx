@@ -76,13 +76,27 @@ export default function DocsPage() {
         <p>
           Response: LRCLIB fields (<code>plainLyrics</code>,{" "}
           <code>syncedLyrics</code> - Enhanced LRC when word timing exists) plus{" "}
-          <code>karalyr: {"{ payload, tier, source, revision_id, has_word_timing }"}</code>.
+          <code>karalyr: {"{ payload, tier, source, revision_id, has_word_timing, has_chords }"}</code>.
         </p>
       </Endpoint>
 
       <Endpoint method="GET" path="/api/get/:track_id">
         <p>Same response by internal track id.</p>
         <Code>{`curl "${BASE}/api/get/2"`}</Code>
+      </Endpoint>
+
+      <Endpoint method="GET" path="/api/chords">
+        <p>
+          Machine-detected chord chart for a track. Same identity params as{" "}
+          <code>/api/get</code> (<code>youtube_id</code> / <code>spotify_id</code>{" "}
+          / <code>video_key</code> / <code>video_url</code>) plus{" "}
+          <code>track_id</code>. 404 (<code>ChordsNotFound</code>) when no chart
+          exists - <code>karalyr.has_chords</code> on <code>/api/get</code> says
+          in advance. Segments carry integer-ms spans, the Harte label, parsed{" "}
+          <code>root_pc</code>/<code>quality</code>/<code>ext</code>/
+          <code>bass_pc</code>, and an honest per-segment confidence.
+        </p>
+        <Code>{`curl "${BASE}/api/chords?youtube_id=dQw4w9WgXcQ"`}</Code>
       </Endpoint>
 
       <Endpoint method="GET" path="/api/search">

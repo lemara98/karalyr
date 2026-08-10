@@ -4,6 +4,7 @@ import { parseUltraStar } from "./ultrastar";
 import { FormatError, LyricsPayload, payloadSchema, Word } from "./types";
 
 export * from "./types";
+export * from "./chords";
 export { parseLrc, serializeLrc, formatTimestamp, parseTimestampMs } from "./lrc";
 export { parseEnhancedLrc, serializeEnhancedLrc } from "./enhanced-lrc";
 export { parseUltraStar } from "./ultrastar";

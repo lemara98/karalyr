@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
+import { hasActiveChordChart } from "@/lib/db/queries";
 import { revisions, tracks } from "@/lib/db/schema";
 import { apiError, corsOptions, json } from "@/lib/api-helpers";
 import { trackResponse } from "@/lib/lrclib-compat";
@@ -25,7 +26,7 @@ export async function GET(
     .where(eq(revisions.id, track.bestRevisionId));
   if (!best) return apiError(404, "TrackNotFound", "Failed to find specified track");
 
-  return json(trackResponse(track, best));
+  return json(trackResponse(track, best, { hasChords: await hasActiveChordChart(db, track.id) }));
 }
 
 export const OPTIONS = corsOptions;

@@ -113,6 +113,51 @@ export const signals = sqliteTable(
   (t) => [index("signals_revision_type_idx").on(t.revisionId, t.type)]
 );
 
+// Where a chord chart may come from. Deliberately NOT the lyric SOURCES list,
+// and deliberately without any third-party member: charts fetched from
+// external services (e.g. Songle) are non-redistributable, and keeping such a
+// value unrepresentable in the schema is the firewall — a mistaken upload
+// fails zod validation instead of relying on policy. v1 has exactly one
+// producer, the worker's own analysis of audio the operator supplied.
+export const CHORD_SOURCES = ["auto_detected"] as const;
+export type ChordSource = (typeof CHORD_SOURCES)[number];
+
+/**
+ * Machine-detected chord charts, one payload per analysis run.
+ *
+ * A separate table rather than a field on revisions: revisions are immutable
+ * LYRIC snapshots — community corrections, offset promotion (applyOffset) and
+ * ranking all assume that — and a chart must survive lyric edits untouched.
+ * Multi-row and append-only like revisions (a re-analysis with a better model
+ * is an append, not an overwrite; takedown tombstones stay meaningful); the
+ * serving query is simply "newest active wins" (getActiveChordChart), so no
+ * materialized best-id is needed while there is one chart per track in
+ * practice.
+ *
+ * Charts are timed against a specific recording; `derived_from_video_key`
+ * records which one produced the timings (a track can have several videos
+ * with different intros).
+ */
+export const chordCharts = sqliteTable(
+  "chord_charts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    trackId: integer("track_id")
+      .notNull()
+      .references(() => tracks.id),
+    source: text("source", { enum: CHORD_SOURCES }).notNull(),
+    tier: text("tier", { enum: TIERS }).notNull(),
+    status: text("status", { enum: STATUSES }).notNull().default("active"),
+    payload: text("payload").notNull(),
+    submitterFingerprint: text("submitter_fingerprint").notNull(),
+    derivedFromVideoKey: text("derived_from_video_key"),
+    createdAt: integer("created_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (t) => [index("chord_charts_track_status_idx").on(t.trackId, t.status, t.createdAt)]
+);
+
 // External video → track mapping ("yt:<videoId>" keys, see lib/video-key.ts).
 // Lets clients resolve lyrics by the video they are literally watching - an
 // exact lookup immune to title parsing. One video points at one track; a
@@ -421,6 +466,7 @@ export const blockedSubmitters = sqliteTable(
 
 export type Track = typeof tracks.$inferSelect;
 export type Revision = typeof revisions.$inferSelect;
+export type ChordChartRow = typeof chordCharts.$inferSelect;
 export type Signal = typeof signals.$inferSelect;
 export type TrackVideo = typeof trackVideos.$inferSelect;
 export type LyricComment = typeof lyricComments.$inferSelect;

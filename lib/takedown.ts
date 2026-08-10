@@ -21,6 +21,7 @@ import { and, count, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "./db/client";
 import {
   blockedSubmitters,
+  chordCharts,
   revisions,
   takedownNotices,
   type TakedownNotice,
@@ -55,6 +56,25 @@ export const TOMBSTONE_PAYLOAD = JSON.stringify({
     language: null,
     has_word_timing: false,
     countdown_lines: [],
+    taken_down: true,
+  },
+});
+
+/**
+ * Chord-chart tombstone, same idea: structurally valid (empty segments pass
+ * chordChartSchema; the import path is what refuses empties), inert, and
+ * never served — getActiveChordChart filters on "active".
+ */
+export const CHORD_TOMBSTONE_PAYLOAD = JSON.stringify({
+  format_version: 1,
+  segments: [],
+  meta: {
+    model: "removed",
+    dict: "removed",
+    key_pc: null,
+    key_mode: null,
+    analyzed_from: "original_mix",
+    duration_ms: 0,
     taken_down: true,
   },
 });
@@ -106,8 +126,20 @@ export async function actionTakedown(
     actor: string;
     resolution?: string | null;
     now?: number;
+    /**
+     * Chord charts named by the notice. Deliberately NOT auto-cascaded from
+     * the revisions: lyric text and a chord transcription are different
+     * claimed works, and a notice about one says nothing about the other.
+     * The admin lists chart ids when the complaint covers the composition.
+     */
+    chordChartIds?: number[];
   }
-): Promise<{ notice: TakedownNotice; removed: number[]; tracksRecomputed: number[] }> {
+): Promise<{
+  notice: TakedownNotice;
+  removed: number[];
+  removedChordCharts: number[];
+  tracksRecomputed: number[];
+}> {
   const now = opts.now ?? Date.now();
 
   const targets = opts.revisionIds.length
@@ -125,28 +157,55 @@ export async function actionTakedown(
       .where(inArray(revisions.id, removable.map((r) => r.id)));
   }
 
+  // Chord charts named by the notice get the same treatment: payload purged,
+  // status terminal. No winner to recompute — getActiveChordChart just stops
+  // finding them — and lib/chord-import.ts refuses re-uploads while any
+  // taken_down chart exists for the track.
+  const chartIds = opts.chordChartIds ?? [];
+  const chartTargets = chartIds.length
+    ? await db.select().from(chordCharts).where(inArray(chordCharts.id, chartIds))
+    : [];
+  const chartRemovable = chartTargets.filter((c) => c.status !== "taken_down");
+  if (chartRemovable.length > 0) {
+    await db
+      .update(chordCharts)
+      .set({ status: "taken_down", payload: CHORD_TOMBSTONE_PAYLOAD })
+      .where(inArray(chordCharts.id, chartRemovable.map((c) => c.id)));
+  }
+
   // Every affected track needs its winner re-picked - the removed revision
   // may well have been it, and `tracks.best_revision_id` is what reads hit.
   const trackIds = [...new Set(targets.map((r) => r.trackId))];
   for (const trackId of trackIds) await computeBestRevision(db, trackId);
 
   const removed = removable.map((r) => r.id);
+  const removedChordCharts = chartRemovable.map((c) => c.id);
+  const noticeTrackIds = [
+    ...new Set([...trackIds, ...chartTargets.map((c) => c.trackId)]),
+  ];
   const [notice] = await db
     .update(takedownNotices)
     .set({
       status: "actioned",
       removedRevisionIds: JSON.stringify(removed),
-      resolution: opts.resolution?.trim() || null,
+      resolution: [
+        opts.resolution?.trim() || null,
+        removedChordCharts.length
+          ? `Removed chord charts: ${removedChordCharts.join(", ")}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || null,
       actionedBy: opts.actor,
       actionedAt: now,
       // Resolve the notice onto a track when it named exactly one, so the
       // record points somewhere specific later.
-      ...(trackIds.length === 1 ? { trackId: trackIds[0] } : {}),
+      ...(noticeTrackIds.length === 1 ? { trackId: noticeTrackIds[0] } : {}),
     })
     .where(eq(takedownNotices.id, opts.noticeId))
     .returning();
 
-  return { notice, removed, tracksRecomputed: trackIds };
+  return { notice, removed, removedChordCharts, tracksRecomputed: trackIds };
 }
 
 /** Close a notice without removing anything. The reason is not optional. */

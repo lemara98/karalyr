@@ -11,10 +11,12 @@ interface JobState {
   error: string | null;
 }
 
-/** Human-readable phase from the worker's log lines. */
+/** Human-readable phase from the worker's log lines. Ordered latest-first:
+ * later pipeline stages must be checked before the ones they follow. */
 function phaseOf(log: string[]): string {
   const joined = log.join("\n");
   if (joined.includes("imported as revision")) return "Imported";
+  if (joined.includes("chords: analyzing")) return "Detecting chords…";
   if (joined.includes("forced alignment")) return "Aligning words to vocals…";
   if (joined.includes("demucs: separating")) return "Separating vocals (slowest step)…";
   if (joined.includes("downloading audio")) return "Downloading audio…";

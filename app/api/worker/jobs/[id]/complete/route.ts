@@ -2,8 +2,10 @@ import { z } from "zod";
 import { getDb } from "@/lib/db/client";
 import { apiError, json } from "@/lib/api-helpers";
 import { importAlignedPayload } from "@/lib/aligned-import";
-import { FormatError, validatePayload, type LyricsPayload } from "@/lib/formats";
+import { importChordChart } from "@/lib/chord-import";
+import { FormatError, validateChordChart, validatePayload, type LyricsPayload } from "@/lib/formats";
 import { completeJob, getOwnedProcessingJob } from "@/lib/sync-queue/core";
+import { deriveVideoKey } from "@/lib/video-key";
 import { isWorkerRequest } from "@/lib/worker-auth";
 
 const bodySchema = z.object({
@@ -23,6 +25,11 @@ const bodySchema = z.object({
     })
     .nullish()
     .catch(undefined),
+  // A chord chart detected during the same run, optional and best-effort:
+  // like meta, a bad chart must never 400 the lyrics job (that 400 becomes a
+  // permanent /fail), so it is validated separately below and dropped with a
+  // warning rather than rejected.
+  chords: z.unknown().optional(),
 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -86,6 +93,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     throw err;
   }
 
+  // Chords ride along when the worker detected them. Before completeJob for
+  // the same reason the revision is: analysis results are worth keeping even
+  // if the lease is lost to queue bookkeeping.
+  let chordChartId: number | null = null;
+  if (body.chords !== undefined) {
+    try {
+      const chart = validateChordChart(body.chords);
+      const result = await importChordChart(db, {
+        trackId: imported.trackId,
+        payload: chart,
+        submitterFingerprint: "system:sync-queue",
+        derivedFromVideoKey: deriveVideoKey(job.videoUrl),
+      });
+      if (result.ok) chordChartId = result.chartId;
+      else console.warn(`[complete] chord chart for job ${jobId} refused: ${result.code}`);
+    } catch (err) {
+      console.warn(
+        `[complete] dropping invalid chord chart for job ${jobId}:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+
   // Lease lost mid-import: the revision already landed and stays - aligned
   // lyrics are worth keeping regardless of queue bookkeeping. The 409 only
   // tells this worker to stop touching the job.
@@ -99,5 +129,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     track_id: imported.trackId,
     revision_id: imported.revisionId,
     revision_status: imported.revisionStatus,
+    chord_chart_id: chordChartId,
   });
 }

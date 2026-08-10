@@ -21,3 +21,9 @@ yt-dlp
 unidecode
 # Thai word segmentation (newmm) for --language th
 pythainlp
+# chord detection (worker/chords.py): key estimate needs librosa - already a
+# demucs transitive dep, pinned here so the manifest tells the whole truth
+librosa
+# the chord model itself: MIT code AND weights (bundled in the wheel), the
+# ISMIR-2019 large-vocabulary model - see worker/chords.py for why not madmom
+lv-chordia

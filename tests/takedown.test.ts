@@ -206,3 +206,47 @@ describe("repeat-infringer policy", () => {
     expect(await isBlockedSubmitter(db, "fp")).toBe(true);
   });
 });
+
+describe("actionTakedown chord charts", () => {
+  it("purges named charts, blocks re-import, keeps revisions untouched", async () => {
+    const { CHORD_TOMBSTONE_PAYLOAD } = await import("@/lib/takedown");
+    const { chordCharts } = await import("@/lib/db/schema");
+    const { getActiveChordChart } = await import("@/lib/db/queries");
+    const { importChordChart } = await import("@/lib/chord-import");
+    const { makeChordChart, sampleChordChart } = await import("./helpers");
+    const db = await makeDb();
+    const track = await makeTrack(db);
+    const rev = await makeRevision(db, track.id);
+    await computeBestRevision(db, track.id);
+    const chart = await makeChordChart(db, track.id);
+    const notice = await recordNotice(db, NOTICE);
+
+    const result = await actionTakedown(db, {
+      noticeId: notice.id,
+      revisionIds: [],
+      chordChartIds: [chart.id],
+      actor: "admin@test",
+      resolution: "composition claim",
+    });
+    expect(result.removed).toEqual([]);
+    expect(result.removedChordCharts).toEqual([chart.id]);
+    expect(result.notice.resolution).toContain("Removed chord charts");
+    expect(result.notice.trackId).toBe(track.id);
+
+    // Purged and no longer served; the revision untouched.
+    const [row] = await db.select().from(chordCharts).where(eq(chordCharts.id, chart.id));
+    expect(row.status).toBe("taken_down");
+    expect(row.payload).toBe(CHORD_TOMBSTONE_PAYLOAD);
+    expect(await getActiveChordChart(db, track.id)).toBeNull();
+    const [revRow] = await db.select().from(revisions).where(eq(revisions.id, rev.id));
+    expect(revRow.status).toBe("active");
+
+    // And re-import is refused while the tombstone stands.
+    const reupload = await importChordChart(db, {
+      trackId: track.id,
+      payload: sampleChordChart(),
+      submitterFingerprint: "system:chords-backfill",
+    });
+    expect(reupload).toEqual({ ok: false, code: "taken_down" });
+  });
+});
